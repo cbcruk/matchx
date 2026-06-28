@@ -1,23 +1,35 @@
 {
   "name": "matchx",
   "version": "0.0.0",
-  "description": "A starter for creating a TypeScript package.",
-  "homepage": "https://github.com/author/library#readme",
+  "description": "Compile-time exhaustive, IIFE-free conditional rendering for JSX. Interface borrowed from neverthrow's .match, not bundled.",
+  "keywords": [
+    "conditional-rendering",
+    "discriminated-union",
+    "exhaustive",
+    "jsx",
+    "match",
+    "pattern-matching",
+    "react"
+  ],
+  "homepage": "https://github.com/author/matchx#readme",
   "bugs": {
-    "url": "https://github.com/author/library/issues"
+    "url": "https://github.com/author/matchx/issues"
   },
   "license": "MIT",
   "author": "Author Name <author.name@mail.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/author/library.git"
+    "url": "git+https://github.com/author/matchx.git"
   },
   "files": [
     "dist"
   ],
   "type": "module",
   "exports": {
-    ".": "./dist/index.mjs",
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -33,10 +45,15 @@
   },
   "devDependencies": {
     "@types/node": "^25.6.2",
+    "@types/react": "^19.2.17",
     "@typescript/native-preview": "7.0.0-dev.20260509.2",
     "bumpp": "^11.1.0",
+    "react": "^19.2.7",
     "typescript": "^6.0.3",
     "vite-plus": "^0.1.20"
+  },
+  "peerDependencies": {
+    "react": ">=18"
   },
   "packageManager": "pnpm@11.9.0"
 }
