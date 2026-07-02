@@ -182,6 +182,24 @@ import { cond } from 'matchx'
 }
 ```
 
+### `iife(body)` — the thing we came to kill 🥚
+
+matchx opens by mocking the inline `(() => { … })()` in a JSX slot. So of course
+it ships one — named. No exhaustiveness, no narrowing; it's literally `body()`.
+It just reads better than the anonymous version and says what it is, for the rare
+slot where you genuinely want procedural code and none of the guarantees:
+
+```tsx
+{
+  iife(() => {
+    const now = Date.now()
+    return <time dateTime={String(now)}>{now}</time>
+  })
+}
+```
+
+If your branches are a union, you wanted `match` / `cond`. You know this.
+
 ## Borrowed, not bundled
 
 From neverthrow's `.match` we kept the **shape**, not the code:

@@ -290,3 +290,12 @@ exhaustive는 임의 guard 체인에선 증명 불가라 런타임 `exhaustive()
 1. `pnpm run build`로 `dist` 생성 확인 (publish 시 `prepublishOnly`가 자동 수행).
 2. `bumpp`로 버전 확정 (`0.0.0` → `1.0.0`), 태그/커밋 생성.
 3. `npm publish` (`publishConfig.access: public`). npm 토큰은 로컬/CI 시크릿으로.
+
+---
+
+## 11. 이스터에그 — `iife` 🥚
+
+matchx의 존재 이유(§1)는 JSX slot의 `(() => { … })()`를 없애는 것. 그래서 바로 그
+IIFE를 **이름 붙여** 다시 싣는다 — 오리진 스토리에 대한 윙크. `iife(body) = body()`.
+타입 스토리 없음(§8.2 원칙에서 유일하게 면제되는 항목), narrowing·exhaustive 없음.
+정직한 escape hatch이자 농담. "유니온이면 `match`/`cond`를 쓰라"는 안내를 문서에 못박음.
