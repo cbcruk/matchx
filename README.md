@@ -77,6 +77,27 @@ purpose, so it demands an explicit `fallback` (cf. neverthrow's `unwrapOr`):
 }
 ```
 
+### `show(when, then, otherwise?)` — truthy-narrowing conditional
+
+The two-branch case, borrowed from Solid's `<Show>` but as a plain expression.
+When `when` is truthy, `then` receives it with `null | undefined` removed
+(`NonNullable`), so the common `T | null` guard narrows for free:
+
+```tsx
+{
+  show(
+    user,
+    (u) => <Profile user={u} />,
+    () => <Guest />,
+  )
+  //         u: NonNullable<typeof user> — no null/undefined
+}
+```
+
+- With `otherwise`, the result is `R`; without it, `R | null`.
+- `false` / `0` / `''` route to `otherwise` at runtime, but only `null` and
+  `undefined` are removed from the value's type.
+
 ### `cond(value).when(…).otherwise(…)` — guard chain
 
 For branches that depend on more than a single discriminant (guards, deep

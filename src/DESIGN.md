@@ -201,17 +201,21 @@ export function each<T, R = ReactNode>(
      > ts-pattern과 표면이 겹치는 점은 인정. 차별점은 (a) zero-dep·초소형, (b) `match`
      > 코어와 한 패키지에서 exhaustive↔flexible 스펙트럼을 이룬다는 것. 이 경계가 얇아지면
      > Phase 3에서 재검토(→ "가드가 필요하면 ts-pattern" 안내로 후퇴 가능).
-2. **`show` truthy 범위** — `null|undefined|false`만 걷을지, `''`/`0`까지 falsy로
-   볼지. `''`/`0`은 타입 narrow가 지저분해짐 → 우선 3개만 (Solid 준함).
+2. ~~**`show` truthy 범위**~~ **[확정]** → **`null|undefined`만 걷는다**(`NonNullable<T>`).
+   당초 `false`까지 걷으려 `Exclude<T, null|undefined|false>`(가칭 `Truthy<T>`)를 썼으나,
+   그 커스텀 conditional을 파라미터 위치에 두면 `otherwise` 없는 2-arg 호출에서 `T`가
+   `never`로 추론되는 문제가 있었다. 빌트인 `NonNullable<T>`는 추론이 안정적이라 이걸
+   채택. `false`/`0`/`''`는 **런타임에선 falsy로 처리**(→ `otherwise`)되지만 타입에선
+   유지된다. `Truthy<T>` 타입은 제거.
 3. **네이밍 충돌** — `match()` 함수와 Solid `<Match>`가 헷갈림. 가드 체인을 만들면
-   `<Match>` 어휘를 피하고 `cond`/`when` 계열로 간다.
+   `<Match>` 어휘를 피하고 `cond`/`when` 계열로 간다. → §8.4 #1에서 `cond`로 확정하며 해소.
 4. **패밀리 export 경로** — 전부 top-level export vs `matchx/flow` 하위 경로 분리.
+   → 현재 `match`/`cond`/`show` 모두 top-level. primitive가 더 늘면 재검토.
 
 ### 8.5 단계별 실행 순서
 
-1. **Phase 1 — `show`**: `src/show.ts` + 타입 테스트(narrowing/negative) + 런타임
-   테스트. `index.ts` export. README에 "control-flow 패밀리" 섹션 신설.
-2. **Phase 2 — `each`**: `src/each.ts` + iterable/빈-fallback 테스트.
-3. **Phase 3 — §8.4 #1 결정**: 가드 체인 or `<When>` 유지 or 제거를, ts-pattern
-   대비 실제 코드 비교로 확정.
+1. ~~**Phase 1 — `show`**~~ **[완료]** `src/show.ts`(overload로 `otherwise` 유무별
+   반환 타입 구분) + `show.test.ts`/`show.test-d.ts`. `index.ts` export, README 갱신.
+2. **Phase 2 — `each`**: `src/each.ts` + iterable/빈-fallback 테스트. (다음)
+3. ~~**Phase 3 — §8.4 #1 결정**~~ **[완료]** `<When>` → `cond` 가드 체인 이전 (§8.4 #1).
 4. 전 구간 **타입 테스트 CI 필수** 유지 — 이 패밀리도 "타입이 곧 기능".
