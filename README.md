@@ -77,30 +77,128 @@ purpose, so it demands an explicit `fallback` (cf. neverthrow's `unwrapOr`):
 }
 ```
 
-### `createMatch<T>()` — optional sibling pattern
+### `show(when, then, otherwise?)` — truthy-narrowing conditional
+
+The two-branch case, borrowed from Solid's `<Show>` but as a plain expression.
+When `when` is truthy, `then` receives it with `null | undefined` removed
+(`NonNullable`), so the common `T | null` guard narrows for free:
+
+```tsx
+{
+  show(
+    user,
+    (u) => <Profile user={u} />,
+    () => <Guest />,
+  )
+  //         u: NonNullable<typeof user> — no null/undefined
+}
+```
+
+- With `otherwise`, the result is `R`; without it, `R | null`.
+- `false` / `0` / `''` route to `otherwise` at runtime, but only `null` and
+  `undefined` are removed from the value's type.
+
+### `each(items, render, fallback?)` — iterable list
+
+Solid's `<For>` as a plain expression. Over a bare `.map` it adds two things:
+it takes **any `Iterable`** (Map, Set, a generator — no spreading), and it folds
+in the empty-state `fallback`. It does **not** manage keys — `render` must return
+keyed elements, exactly as `.map` requires:
+
+```tsx
+{
+  each(
+    users,
+    (u) => <Row key={u.id} user={u} />,
+    () => <Empty />,
+  )
+}
+
+{
+  each(byId, ([id, u]) => <Row key={id} user={u} />) // byId: Map<Id, User>
+}
+```
+
+Empty and no `fallback` → `null`.
+
+Because `each` takes any `Iterable`, it's the **render terminal for native
+[Iterator Helpers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator)** —
+do the lazy `map` / `filter` / `take` with the platform, then let `each`
+materialize the result. `each` deliberately does **not** reimplement them:
+
+```tsx
+{
+  each(
+    users
+      .values()
+      .filter((u) => u.active)
+      .take(10),
+    (u) => <Row key={u.id} user={u} />,
+    () => <Empty />,
+  )
+}
+```
+
+### `cond(value).when(…).otherwise(…)` — guard chain
 
 For branches that depend on more than a single discriminant (guards, deep
 patterns). This is **non-exhaustive by design** — the flexible counterpart to
-`match`:
+`match`. Like `match`, it's a plain expression (no JSX element), so it drops
+straight into a `{}` slot:
 
 ```tsx
-import { createMatch } from 'matchx'
+import { cond } from 'matchx'
 
-const { Match, When, Otherwise } = createMatch<State>()
-
-<Match value={state} exhaustive>
-  <When pattern={{ status: 'error' }} guard={(s) => s.code >= 500}>
-    {(s) => <Fatal code={s.code} />}
-  </When>
-  <When pattern={{ status: 'error' }}>{(s) => <Error msg={s.message} />}</When>
-  <When pattern={{ status: 'loading' }}>{<Spinner />}</When>
-  <Otherwise>{(s) => <Content state={s} />}</Otherwise>
-</Match>
+{
+  cond(state)
+    .when(
+      { status: 'error' },
+      (s) => s.code >= 500,
+      (s) => <Fatal code={s.code} />,
+    )
+    .when({ status: 'error' }, (s) => <Error msg={s.message} />) // s: error member
+    .when({ status: 'loading' }, () => <Spinner />)
+    .otherwise((s) => <Content state={s} />)
+}
 ```
 
-`pattern` deep-partially matches the value and narrows the children; `guard` adds
-a runtime predicate. `exhaustive` throws at runtime if nothing matched and there
-is no `<Otherwise>`.
+- **First matching arm wins**; only its render runs.
+- `when(pattern, render)` — `pattern` deep-partially matches the value and
+  **narrows** the render argument.
+- `when(pattern, guard, render)` — same, refined by a runtime `guard`; both must
+  hold.
+- `when(predicate, render)` — a `(v) => v is U` type guard narrows to `U`.
+- `when(anyOf(p1, p2, …), render)` — an **or-pattern** (Rust's `P1 | P2`): matches
+  if any alternative does, and narrows to the **union** of the members they pick.
+- Terminals: `otherwise(render)` always produces a result; `run()` returns the
+  match or `undefined`; `exhaustive()` throws at runtime if nothing matched.
+
+```tsx
+{
+  cond(state)
+    .when(anyOf({ status: 'error' }, { status: 'timeout' }), (s) => <ErrorView s={s} />)
+    //     s: the 'error' | 'timeout' members — one arm, no duplicated render
+    .otherwise((s) => <Content state={s} />)
+}
+```
+
+### `iife(body)` — the thing we came to kill 🥚
+
+matchx opens by mocking the inline `(() => { … })()` in a JSX slot. So of course
+it ships one — named. No exhaustiveness, no narrowing; it's literally `body()`.
+It just reads better than the anonymous version and says what it is, for the rare
+slot where you genuinely want procedural code and none of the guarantees:
+
+```tsx
+{
+  iife(() => {
+    const now = Date.now()
+    return <time dateTime={String(now)}>{now}</time>
+  })
+}
+```
+
+If your branches are a union, you wanted `match` / `cond`. You know this.
 
 ## Borrowed, not bundled
 
@@ -123,6 +221,5 @@ vp check     # format, lint, type-check (this is where the type tests run)
 vp pack      # build (ESM + .d.ts)
 ```
 
-`tests/match.test-d.ts` holds the type-level tests — the negative
-`@ts-expect-error` cases are the real regression line, since here the **types are
-the feature**.
+`tests/*.test-d.ts` hold the type-level tests — the negative `@ts-expect-error`
+cases are the real regression line, since here the **types are the feature**.

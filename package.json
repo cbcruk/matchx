@@ -11,25 +11,22 @@
     "pattern-matching",
     "react"
   ],
-  "homepage": "https://github.com/author/matchx#readme",
+  "homepage": "https://github.com/cbcruk/matchx#readme",
   "bugs": {
-    "url": "https://github.com/author/matchx/issues"
+    "url": "https://github.com/cbcruk/matchx/issues"
   },
   "license": "MIT",
-  "author": "Author Name <author.name@mail.com>",
+  "author": "cbcruk <cbcruk@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/author/matchx.git"
+    "url": "git+https://github.com/cbcruk/matchx.git"
   },
   "files": [
     "dist"
   ],
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "default": "./dist/index.mjs"
-    },
+    ".": "./dist/index.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {
