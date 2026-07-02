@@ -126,6 +126,85 @@ test/
 5. 런타임 테스트: arm 분기·`partial` fallback 동작
 6. README (motivation = IIFE 문제, "borrowed not bundled" 차용 원칙 명시)
 
+---
+
+## 8. 확장 로드맵 — 함수형 control-flow 패밀리
+
+> Solid의 `<Show>`/`<For>`/`<Switch>`에서 **아이디어**를 빌리되, JSX element가
+> 아니라 **표현식 함수**로 구현한다. matchx의 정체성은 "element가 아니라 slot에
+> 그대로 들어가는 expression"이므로, 확장도 같은 형태를 지킨다.
+
+### 8.1 방향 결정
+
+- **확장한다.** 코어 `match` 하나로 좁히는 대신, JSX 제어흐름 전반을 **표현식
+  함수**로 커버하는 패밀리로 넓힌다.
+- **형태 = 함수.** Solid는 JSX element(`<Show>`)지만, 우리는 `match()`처럼
+  값→ReactNode를 돌려주는 **함수**로 옮긴다. `{}` slot에 그대로 들어가고,
+  IIFE·wrapper element가 필요 없다.
+- 이 결정으로 기존 JSX 형제(`createMatch`/`<Match>/<When>`)는 **이질적 존재가
+  된다** → §8.4에서 함수형으로 이전할지 결정.
+
+### 8.2 채택 원칙 (sugar 방지선)
+
+> **모든 primitive는 "타입 스토리"(narrowing 또는 exhaustiveness)로 자기 자리를
+> 벌어야 한다. 단순 문법 설탕이면 탈락.**
+
+이 선을 넘지 못하면 "또 하나의 jsx-control-statements"가 된다. Solid의 control
+flow는 대부분 **반응성/성능** 때문에 존재하지만, React에는 그 이유가 없으므로
+우리에겐 **타입**만이 존재 이유다.
+
+### 8.3 primitive 후보 (원칙 통과 여부)
+
+| primitive        | 타입 스토리                                                        | 판정                    |
+| ---------------- | ------------------------------------------------------------------ | ----------------------- |
+| `match` (코어)   | exhaustiveness (arm 누락 → 컴파일 에러)                            | ✅ 유지 (왕관 보석)     |
+| **`show`**       | `when: T` → then 콜백이 `Exclude<T, null\|undefined\|false>` narrow | ✅ **1순위**            |
+| **`each`**       | iterable 지원 + typed 빈-`fallback` (item 타입은 자명, 값은 약함)   | ⚠️ **2순위** (ergonomic) |
+| 가드 체인(§8.4)  | predicate `is` type guard / pattern narrow, non-exhaustive         | ⚠️ **3순위** (ts-pattern 중복 검토) |
+| `iff`/`unless`   | 없음 (boolean sugar, `show`와 중복)                                | ❌ 탈락                 |
+| `Iterator` 전용  | `each`가 `Iterable` 받으면 흡수됨                                   | → `each`로 통합         |
+
+제안 시그니처:
+
+```ts
+// 8.3.1 show — truthy-narrowing 조건부 (1순위)
+//   when이 falsy면 otherwise(없으면 null), truthy면 좁혀서 then에 전달.
+export function show<T, R = ReactNode>(
+  when: T,
+  then: (value: Exclude<T, null | undefined | false>) => R,
+  otherwise?: () => R,
+): R
+
+// {show(user, (u) => <Profile user={u} />, () => <Guest />)}
+//   u: NonNullable — null/undefined/false 걷어냄 (Solid <Show>의 핵심 이득)
+
+// 8.3.2 each — iterable 리스트 + 빈 fallback (2순위)
+//   .map 대비 이득: (a) Map/Set/generator 등 임의 iterable, (b) 빈 상태 fallback 내장.
+//   key는 마법으로 해결하지 않는다 — render가 keyed element를 반환해야 함(.map과 동일).
+export function each<T, R = ReactNode>(
+  items: Iterable<T>,
+  render: (item: T, index: number) => R,
+  fallback?: () => R,
+): ReactNode
 ```
 
-```
+### 8.4 열린 결정 (구현 전 확정)
+
+1. **`createMatch`/`<When>` 처리** — 가드·deep pattern이 필요한 non-exhaustive
+   분기를 (a) 함수형 가드 체인 `cond(v).when(pred, r).otherwise(r)`으로 이전할지,
+   (b) 기존 JSX 형제로 남길지, (c) 제거하고 "가드가 필요하면 ts-pattern"으로 안내할지.
+   → 함수형 가드 체인은 ts-pattern과 **표면이 크게 겹친다**. 정직하게 비교 후 결정.
+2. **`show` truthy 범위** — `null|undefined|false`만 걷을지, `''`/`0`까지 falsy로
+   볼지. `''`/`0`은 타입 narrow가 지저분해짐 → 우선 3개만 (Solid 준함).
+3. **네이밍 충돌** — `match()` 함수와 Solid `<Match>`가 헷갈림. 가드 체인을 만들면
+   `<Match>` 어휘를 피하고 `cond`/`when` 계열로 간다.
+4. **패밀리 export 경로** — 전부 top-level export vs `matchx/flow` 하위 경로 분리.
+
+### 8.5 단계별 실행 순서
+
+1. **Phase 1 — `show`**: `src/show.ts` + 타입 테스트(narrowing/negative) + 런타임
+   테스트. `index.ts` export. README에 "control-flow 패밀리" 섹션 신설.
+2. **Phase 2 — `each`**: `src/each.ts` + iterable/빈-fallback 테스트.
+3. **Phase 3 — §8.4 #1 결정**: 가드 체인 or `<When>` 유지 or 제거를, ts-pattern
+   대비 실제 코드 비교로 확정.
+4. 전 구간 **타입 테스트 CI 필수** 유지 — 이 패밀리도 "타입이 곧 기능".
