@@ -216,6 +216,9 @@ export function each<T, R = ReactNode>(
 
 1. ~~**Phase 1 — `show`**~~ **[완료]** `src/show.ts`(overload로 `otherwise` 유무별
    반환 타입 구분) + `show.test.ts`/`show.test-d.ts`. `index.ts` export, README 갱신.
-2. **Phase 2 — `each`**: `src/each.ts` + iterable/빈-fallback 테스트. (다음)
+2. ~~**Phase 2 — `each`**~~ **[완료]** `src/each.ts`(임의 `Iterable<T>` + 빈-`fallback`,
+   반환은 `ReactNode`) + `each.test.ts`/`each.test-d.ts`(Array/Map/Set/generator).
+   §8.3의 `<T, R = ReactNode>` 제네릭은 리스트가 본질적으로 노드를 내므로 불필요 →
+   `R` 제거하고 `ReactNode` 고정. key는 마법 처리 없음(render가 keyed element 반환).
 3. ~~**Phase 3 — §8.4 #1 결정**~~ **[완료]** `<When>` → `cond` 가드 체인 이전 (§8.4 #1).
 4. 전 구간 **타입 테스트 CI 필수** 유지 — 이 패밀리도 "타입이 곧 기능".

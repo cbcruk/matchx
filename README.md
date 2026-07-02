@@ -98,6 +98,29 @@ When `when` is truthy, `then` receives it with `null | undefined` removed
 - `false` / `0` / `''` route to `otherwise` at runtime, but only `null` and
   `undefined` are removed from the value's type.
 
+### `each(items, render, fallback?)` — iterable list
+
+Solid's `<For>` as a plain expression. Over a bare `.map` it adds two things:
+it takes **any `Iterable`** (Map, Set, a generator — no spreading), and it folds
+in the empty-state `fallback`. It does **not** manage keys — `render` must return
+keyed elements, exactly as `.map` requires:
+
+```tsx
+{
+  each(
+    users,
+    (u) => <Row key={u.id} user={u} />,
+    () => <Empty />,
+  )
+}
+
+{
+  each(byId, ([id, u]) => <Row key={id} user={u} />) // byId: Map<Id, User>
+}
+```
+
+Empty and no `fallback` → `null`.
+
 ### `cond(value).when(…).otherwise(…)` — guard chain
 
 For branches that depend on more than a single discriminant (guards, deep
