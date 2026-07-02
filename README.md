@@ -150,8 +150,19 @@ import { cond } from 'matchx'
 - `when(pattern, guard, render)` — same, refined by a runtime `guard`; both must
   hold.
 - `when(predicate, render)` — a `(v) => v is U` type guard narrows to `U`.
+- `when(anyOf(p1, p2, …), render)` — an **or-pattern** (Rust's `P1 | P2`): matches
+  if any alternative does, and narrows to the **union** of the members they pick.
 - Terminals: `otherwise(render)` always produces a result; `run()` returns the
   match or `undefined`; `exhaustive()` throws at runtime if nothing matched.
+
+```tsx
+{
+  cond(state)
+    .when(anyOf({ status: 'error' }, { status: 'timeout' }), (s) => <ErrorView s={s} />)
+    //     s: the 'error' | 'timeout' members — one arm, no duplicated render
+    .otherwise((s) => <Content state={s} />)
+}
+```
 
 ## Borrowed, not bundled
 

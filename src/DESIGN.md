@@ -222,3 +222,45 @@ export function each<T, R = ReactNode>(
    `R` 제거하고 `ReactNode` 고정. key는 마법 처리 없음(render가 keyed element 반환).
 3. ~~**Phase 3 — §8.4 #1 결정**~~ **[완료]** `<When>` → `cond` 가드 체인 이전 (§8.4 #1).
 4. 전 구간 **타입 테스트 CI 필수** 유지 — 이 패밀리도 "타입이 곧 기능".
+
+---
+
+## 9. Rust 패턴 차용 검토 (the Rust Book ch19)
+
+### 9.1 "패턴이 쓰이는 자리"(ch19-01) → 렌더링 매핑
+
+| Rust 자리      | 렌더링 대응               | 상태                       |
+| -------------- | ------------------------- | -------------------------- |
+| match arms     | 유니온 분기               | ✅ `match`+`cond`          |
+| if let / else  | 있으면/없으면·몇 갈래만   | ✅ `show`/`cond`/`partial` |
+| while let      | (선언적 렌더에 루프 없음) | ❌ 도메인 밖               |
+| for loops      | 컬렉션 반복 + 구조분해    | ✅ `each` + JS 구조분해    |
+| let statements | 구조분해                  | ❌ JS 네이티브             |
+| fn params      | 구조분해                  | ❌ JS 네이티브             |
+
+**결론**: "자리" 관점에서 렌더링에 매핑되는 것은 모두 커버됨. 나머지는 명령형이거나
+JS가 이미 하는 것 → 신규 primitive 없음.
+
+### 9.2 "패턴 문법"(ch19-04) → §8.2 원칙으로 필터
+
+- match guard / `..` 나머지 무시 / literal / `_` → 이미 `cond`에 존재.
+- **or-pattern `P1 | P2`** → 유일한 신규 후보(유니온 narrowing = 타입 스토리 통과).
+- range `1..=5`, `@` 바인딩 → 렌더링엔 니치/저가치 → 보류.
+
+### 9.3 [확정] or-pattern = `anyOf`
+
+`cond`에 `anyOf(...patterns)` 결합자 추가. 배열을 그대로 쓰면 array-shaped pattern과
+모호하므로 **심볼 브랜딩된 박스**(`AnyOf<P>`)로 구분. `.when(anyOf(...), render)`는
+매칭된 멤버들의 **유니온**으로 narrow. `.when` 오버로드는 AnyOf 케이스를 먼저 두어
+평범한 pattern과 충돌 안 나게 함(평범한 pattern은 심볼 키가 없어 `AnyOf<P>`에 미할당).
+
+### 9.4 refutability 렌즈 (설계 완결성 근거)
+
+Rust의 irrefutable(항상 매칭) vs refutable(실패 가능) 구분으로 보면 패밀리가 완결:
+
+- irrefutable(let·params) → **JS 네이티브 구조분해** (matchx 밖)
+- refutable + exhaustive → **`match`**
+- refutable + non-exhaustive → **`cond` / `show` / `partial`**
+
+즉 "렌더링에서 필요한 refutable 매칭"은 matchx가 전부 덮는다. `cond`의 컴파일타임
+exhaustive는 임의 guard 체인에선 증명 불가라 런타임 `exhaustive()`가 한계선.

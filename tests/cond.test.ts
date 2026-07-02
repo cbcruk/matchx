@@ -1,5 +1,5 @@
 import { expect, test } from 'vite-plus/test'
-import { cond } from '../src/cond.ts'
+import { anyOf, cond } from '../src/cond.ts'
 
 type State =
   | { status: 'loading' }
@@ -81,4 +81,37 @@ test('exhaustive throws when nothing matched', () => {
       .when({ status: 'loading' }, () => 'loading')
       .exhaustive(),
   ).toThrow(/non-exhaustive/)
+})
+
+test('cond anyOf matches when any alternative pattern matches', () => {
+  const run = (v: State) =>
+    cond(v)
+      .when(anyOf({ status: 'loading' }, { status: 'error' }), () => 'busy')
+      .otherwise(() => 'done')
+
+  expect(run({ status: 'loading' })).toBe('busy')
+  expect(run({ status: 'error', message: 'boom', code: 1 })).toBe('busy')
+  expect(run({ status: 'success', data: [] })).toBe('done')
+})
+
+test('cond anyOf narrows the render argument to the union of members', () => {
+  const out = cond({ status: 'error', message: 'boom', code: 1 } as State)
+    .when(anyOf({ status: 'error' }, { status: 'success' }), (s) => s.status)
+    .otherwise(() => 'loading')
+
+  expect(out).toBe('error')
+})
+
+test('cond anyOf still respects a guard', () => {
+  const run = (v: State) =>
+    cond(v)
+      .when(
+        anyOf({ status: 'error' }, { status: 'success' }),
+        (s) => s.status === 'error',
+        () => 'err',
+      )
+      .otherwise(() => 'other')
+
+  expect(run({ status: 'error', message: 'boom', code: 1 })).toBe('err')
+  expect(run({ status: 'success', data: [] })).toBe('other')
 })

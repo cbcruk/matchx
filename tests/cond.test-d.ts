@@ -1,4 +1,4 @@
-import { cond } from '../src/cond.ts'
+import { anyOf, cond } from '../src/cond.ts'
 
 /* -------------------------------------------------------------------------- */
 /*  Type-level tests for the `cond` guard chain. Not run by vitest; the         */
@@ -53,3 +53,27 @@ export const badPattern = cond(state)
 export const mustHandleUndefined: string = cond(state)
   .when({ status: 'error' }, (s) => s.message)
   .run()
+
+/* --- positive: anyOf narrows to the union of the matched members ----------- */
+
+export const orNarrowed = cond(state)
+  .when(anyOf({ status: 'loading' }, { status: 'error' }), (s) => s.status)
+  .otherwise(() => 'other')
+
+/* --- negative: an anyOf arm only sees fields common to the whole union ------ */
+
+export const orWrongField = cond(state)
+  .when(
+    anyOf({ status: 'loading' }, { status: 'error' }),
+    (s) =>
+      // @ts-expect-error 'message' is absent on the 'loading' member of the union
+      s.message,
+  )
+  .otherwise(() => null)
+
+/* --- negative: anyOf alternatives must still be valid patterns ------------- */
+
+export const orBadPattern = cond(state)
+  // @ts-expect-error 'idle' is not a valid discriminant value
+  .when(anyOf({ status: 'error' }, { status: 'idle' }), () => 'x')
+  .otherwise(() => null)

@@ -24,12 +24,60 @@ function matches(value: unknown, pattern: unknown): boolean {
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Or-patterns — Rust's `P1 | P2`. A branded box so `.when` can tell an        */
+/*  alternatives list apart from a single array-shaped pattern.                */
+/* -------------------------------------------------------------------------- */
+
+const ANY_OF = Symbol('matchx.anyOf')
+
+/** A set of alternative patterns; the value matches if any one of them does. */
+export interface AnyOf<P> {
+  readonly [ANY_OF]: readonly P[]
+}
+
+/**
+ * Match any of several patterns in one `cond` arm (Rust's `P1 | P2`). The render
+ * argument is narrowed to the union of the members those patterns pick out.
+ *
+ * @example
+ * ```tsx
+ * cond(state)
+ *   .when(anyOf({ status: 'error' }, { status: 'timeout' }), (s) => <ErrorView s={s} />)
+ *   .otherwise((s) => <Content state={s} />)
+ * //  s: the 'error' | 'timeout' members
+ * ```
+ */
+export function anyOf<const P>(...patterns: readonly P[]): AnyOf<P> {
+  return { [ANY_OF]: patterns }
+}
+
+function isAnyOf(x: unknown): x is AnyOf<unknown> {
+  return typeof x === 'object' && x !== null && ANY_OF in x
+}
+
+function patternMatches(value: unknown, matcher: unknown): boolean {
+  if (isAnyOf(matcher)) return matcher[ANY_OF].some((p) => matches(value, p))
+  return matches(value, matcher)
+}
+
 /**
  * A guard-chain builder over a value of type `T`. `R` accumulates the union of
  * every arm's return type, so the terminals (`otherwise`/`run`/`exhaustive`)
  * are typed against exactly the branches you added.
  */
 export interface Cond<T, R = never> {
+  /** Or-pattern arm (`anyOf`). `render` sees the union the alternatives pick. */
+  when<const P extends Pattern<T>, R2>(
+    patterns: AnyOf<P>,
+    render: (value: Narrow<T, P>) => R2,
+  ): Cond<T, R | R2>
+  /** Or-pattern arm refined by a runtime `guard`; both must hold to match. */
+  when<const P extends Pattern<T>, R2>(
+    patterns: AnyOf<P>,
+    guard: (value: Narrow<T, P>) => boolean,
+    render: (value: Narrow<T, P>) => R2,
+  ): Cond<T, R | R2>
   /** Deep-partial pattern arm. `render` sees the value narrowed by `pattern`. */
   when<const P extends Pattern<T>, R2>(
     pattern: P,
@@ -91,7 +139,7 @@ export function cond<T>(value: T): Cond<T> {
       }
 
       if (!matched) {
-        const patternOk = pattern === undefined || matches(value, pattern)
+        const patternOk = pattern === undefined || patternMatches(value, pattern)
         const guardOk = guard ? guard(value) : true
         if (patternOk && guardOk) {
           matched = true
