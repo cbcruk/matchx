@@ -8,6 +8,10 @@ import type { ReactNode } from 'react'
 /*  `Iterable` — Map, Set, a generator — without spreading first, and folds    */
 /*  the empty-state `fallback` in. It does NOT solve keys: `render` must return */
 /*  keyed elements, exactly as `.map` requires.                                */
+/*                                                                            */
+/*  Taking any `Iterable` also makes `each` the render terminal for native     */
+/*  Iterator Helpers: do the lazy map/filter/take with the platform, then let  */
+/*  `each` materialize the result. We deliberately do NOT reimplement them.    */
 /* -------------------------------------------------------------------------- */
 
 /**

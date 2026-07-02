@@ -121,6 +121,24 @@ keyed elements, exactly as `.map` requires:
 
 Empty and no `fallback` → `null`.
 
+Because `each` takes any `Iterable`, it's the **render terminal for native
+[Iterator Helpers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator)** —
+do the lazy `map` / `filter` / `take` with the platform, then let `each`
+materialize the result. `each` deliberately does **not** reimplement them:
+
+```tsx
+{
+  each(
+    users
+      .values()
+      .filter((u) => u.active)
+      .take(10),
+    (u) => <Row key={u.id} user={u} />,
+    () => <Empty />,
+  )
+}
+```
+
 ### `cond(value).when(…).otherwise(…)` — guard chain
 
 For branches that depend on more than a single discriminant (guards, deep

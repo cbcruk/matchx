@@ -220,6 +220,11 @@ export function each<T, R = ReactNode>(
    반환은 `ReactNode`) + `each.test.ts`/`each.test-d.ts`(Array/Map/Set/generator).
    §8.3의 `<T, R = ReactNode>` 제네릭은 리스트가 본질적으로 노드를 내므로 불필요 →
    `R` 제거하고 `ReactNode` 고정. key는 마법 처리 없음(render가 keyed element 반환).
+   > **Iterator Helpers 관련 [확정]**: `.map/.filter/.take/…`나 `Iterator.from()`을
+   > 재구현하지 않는다. 이건 네이티브(Node 22+/모던 브라우저)이고 lazy 변환 담당.
+   > `each`는 `Iterable<T>`를 받으므로 helper 체인 결과(`IteratorObject`)를 그대로
+   > 소비하는 **렌더 터미널**이다 — 변환은 플랫폼, materialize는 `each`. 우리만의
+   > 이터레이터 API를 만드는 건 §8.2(타입 스토리 없는 sugar) 위반이라 배제.
 3. ~~**Phase 3 — §8.4 #1 결정**~~ **[완료]** `<When>` → `cond` 가드 체인 이전 (§8.4 #1).
 4. 전 구간 **타입 테스트 CI 필수** 유지 — 이 패밀리도 "타입이 곧 기능".
 
