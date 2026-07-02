@@ -269,3 +269,24 @@ Rust의 irrefutable(항상 매칭) vs refutable(실패 가능) 구분으로 보�
 
 즉 "렌더링에서 필요한 refutable 매칭"은 matchx가 전부 덮는다. `cond`의 컴파일타임
 exhaustive는 임의 guard 체인에선 증명 불가라 런타임 `exhaustive()`가 한계선.
+
+---
+
+## 10. 1.0 배포 준비
+
+### 10.1 완료 항목
+
+- **메타데이터** — `package.json`의 placeholder(`author/matchx`, `Author Name`)를
+  `cbcruk/matchx` · `cbcruk <cbcruk@gmail.com>`로 교체. `LICENSE`(MIT) 추가.
+- **CI** — `.github/workflows/ci.yml`: `pnpm run check`(format+lint+type-check,
+  `*.test-d.ts` 포함) → `test` → `build`. 타입 테스트가 CI 필수 관문 = 회귀 방어선.
+- **빌드 검증** — `vp pack` → `dist/index.mjs`(ESM) + `dist/index.d.mts`. `exports`는
+  vite-plus(`pack.exports: true`)가 관리하며 `".": "./dist/index.mjs"` 문자열 형태.
+  타입은 `.mjs` 옆 `.d.mts` **co-location**으로 nodenext/bundler 해석에서 자동 인식되므로
+  별도 `types` 조건 불필요(수동으로 넣으면 `vp config`가 덮어씀).
+
+### 10.2 남은 수동 단계 (npm 인증 필요 → 사용자 몫)
+
+1. `pnpm run build`로 `dist` 생성 확인 (publish 시 `prepublishOnly`가 자동 수행).
+2. `bumpp`로 버전 확정 (`0.0.0` → `1.0.0`), 태그/커밋 생성.
+3. `npm publish` (`publishConfig.access: public`). npm 토큰은 로컬/CI 시크릿으로.

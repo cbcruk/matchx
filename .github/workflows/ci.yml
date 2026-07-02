@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Format, lint, and type-check. The type-check runs tests/*.test-d.ts,
+      # whose @ts-expect-error negatives are this library's real regression line.
+      - name: Check
+        run: pnpm run check
+
+      - name: Test
+        run: pnpm run test
+
+      # The published artifact (ESM + .d.ts) must build.
+      - name: Build
+        run: pnpm run build
