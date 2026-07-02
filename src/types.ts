@@ -27,7 +27,7 @@ export interface Matchable<T extends Record<D, PropertyKey>, D extends keyof T> 
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Sibling (`when`) types                                                     */
+/*  Guard-chain (`cond`) types                                                 */
 /* -------------------------------------------------------------------------- */
 
 /** A deep-partial shape used to match against a value of type `T`. */
@@ -44,6 +44,3 @@ export type Pattern<T> =
  * Falls back to `T` when the pattern is too loose to narrow.
  */
 export type Narrow<T, P> = [Extract<T, P>] extends [never] ? T : Extract<T, P>
-
-/** A renderable: either a node, or a function producing one from the value. */
-export type Render<V> = ((value: V) => ReactNode) | ReactNode

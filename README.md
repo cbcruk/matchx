@@ -77,30 +77,37 @@ purpose, so it demands an explicit `fallback` (cf. neverthrow's `unwrapOr`):
 }
 ```
 
-### `createMatch<T>()` — optional sibling pattern
+### `cond(value).when(…).otherwise(…)` — guard chain
 
 For branches that depend on more than a single discriminant (guards, deep
 patterns). This is **non-exhaustive by design** — the flexible counterpart to
-`match`:
+`match`. Like `match`, it's a plain expression (no JSX element), so it drops
+straight into a `{}` slot:
 
 ```tsx
-import { createMatch } from 'matchx'
+import { cond } from 'matchx'
 
-const { Match, When, Otherwise } = createMatch<State>()
-
-<Match value={state} exhaustive>
-  <When pattern={{ status: 'error' }} guard={(s) => s.code >= 500}>
-    {(s) => <Fatal code={s.code} />}
-  </When>
-  <When pattern={{ status: 'error' }}>{(s) => <Error msg={s.message} />}</When>
-  <When pattern={{ status: 'loading' }}>{<Spinner />}</When>
-  <Otherwise>{(s) => <Content state={s} />}</Otherwise>
-</Match>
+{
+  cond(state)
+    .when(
+      { status: 'error' },
+      (s) => s.code >= 500,
+      (s) => <Fatal code={s.code} />,
+    )
+    .when({ status: 'error' }, (s) => <Error msg={s.message} />) // s: error member
+    .when({ status: 'loading' }, () => <Spinner />)
+    .otherwise((s) => <Content state={s} />)
+}
 ```
 
-`pattern` deep-partially matches the value and narrows the children; `guard` adds
-a runtime predicate. `exhaustive` throws at runtime if nothing matched and there
-is no `<Otherwise>`.
+- **First matching arm wins**; only its render runs.
+- `when(pattern, render)` — `pattern` deep-partially matches the value and
+  **narrows** the render argument.
+- `when(pattern, guard, render)` — same, refined by a runtime `guard`; both must
+  hold.
+- `when(predicate, render)` — a `(v) => v is U` type guard narrows to `U`.
+- Terminals: `otherwise(render)` always produces a result; `run()` returns the
+  match or `undefined`; `exhaustive()` throws at runtime if nothing matched.
 
 ## Borrowed, not bundled
 
@@ -123,6 +130,5 @@ vp check     # format, lint, type-check (this is where the type tests run)
 vp pack      # build (ESM + .d.ts)
 ```
 
-`tests/match.test-d.ts` holds the type-level tests — the negative
-`@ts-expect-error` cases are the real regression line, since here the **types are
-the feature**.
+`tests/*.test-d.ts` hold the type-level tests — the negative `@ts-expect-error`
+cases are the real regression line, since here the **types are the feature**.

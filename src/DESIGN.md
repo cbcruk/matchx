@@ -155,14 +155,14 @@ flow는 대부분 **반응성/성능** 때문에 존재하지만, React에는 �
 
 ### 8.3 primitive 후보 (원칙 통과 여부)
 
-| primitive        | 타입 스토리                                                        | 판정                    |
-| ---------------- | ------------------------------------------------------------------ | ----------------------- |
-| `match` (코어)   | exhaustiveness (arm 누락 → 컴파일 에러)                            | ✅ 유지 (왕관 보석)     |
-| **`show`**       | `when: T` → then 콜백이 `Exclude<T, null\|undefined\|false>` narrow | ✅ **1순위**            |
-| **`each`**       | iterable 지원 + typed 빈-`fallback` (item 타입은 자명, 값은 약함)   | ⚠️ **2순위** (ergonomic) |
-| 가드 체인(§8.4)  | predicate `is` type guard / pattern narrow, non-exhaustive         | ⚠️ **3순위** (ts-pattern 중복 검토) |
-| `iff`/`unless`   | 없음 (boolean sugar, `show`와 중복)                                | ❌ 탈락                 |
-| `Iterator` 전용  | `each`가 `Iterable` 받으면 흡수됨                                   | → `each`로 통합         |
+| primitive       | 타입 스토리                                                         | 판정                                |
+| --------------- | ------------------------------------------------------------------- | ----------------------------------- |
+| `match` (코어)  | exhaustiveness (arm 누락 → 컴파일 에러)                             | ✅ 유지 (왕관 보석)                 |
+| **`show`**      | `when: T` → then 콜백이 `Exclude<T, null\|undefined\|false>` narrow | ✅ **1순위**                        |
+| **`each`**      | iterable 지원 + typed 빈-`fallback` (item 타입은 자명, 값은 약함)   | ⚠️ **2순위** (ergonomic)            |
+| 가드 체인(§8.4) | predicate `is` type guard / pattern narrow, non-exhaustive          | ⚠️ **3순위** (ts-pattern 중복 검토) |
+| `iff`/`unless`  | 없음 (boolean sugar, `show`와 중복)                                 | ❌ 탈락                             |
+| `Iterator` 전용 | `each`가 `Iterable` 받으면 흡수됨                                   | → `each`로 통합                     |
 
 제안 시그니처:
 
@@ -190,10 +190,17 @@ export function each<T, R = ReactNode>(
 
 ### 8.4 열린 결정 (구현 전 확정)
 
-1. **`createMatch`/`<When>` 처리** — 가드·deep pattern이 필요한 non-exhaustive
-   분기를 (a) 함수형 가드 체인 `cond(v).when(pred, r).otherwise(r)`으로 이전할지,
-   (b) 기존 JSX 형제로 남길지, (c) 제거하고 "가드가 필요하면 ts-pattern"으로 안내할지.
-   → 함수형 가드 체인은 ts-pattern과 **표면이 크게 겹친다**. 정직하게 비교 후 결정.
+1. ~~**`createMatch`/`<When>` 처리**~~ **[확정]** → 함수형 가드 체인 `cond`로
+   **이전 완료**. `src/when.tsx`(JSX 형제)를 제거하고 `src/cond.ts`로 대체:
+   `cond(v).when(pattern|guard, render).otherwise(render)`. 근거 — `match`와 동일한
+   "expression, no JSX element" 형태로 통일되어 정체성이 정합해짐. `<When>`이 쓰던
+   pattern narrowing·guard·runtime-exhaustive를 모두 보존:
+   - `when(pattern, render)` / `when(pattern, guard, render)` / `when(predicate, render)`
+   - 터미널 `otherwise` / `run()`(→ `undefined`) / `exhaustive()`(→ throw)
+   - first-match-wins, 매칭된 arm의 render만 실행
+     > ts-pattern과 표면이 겹치는 점은 인정. 차별점은 (a) zero-dep·초소형, (b) `match`
+     > 코어와 한 패키지에서 exhaustive↔flexible 스펙트럼을 이룬다는 것. 이 경계가 얇아지면
+     > Phase 3에서 재검토(→ "가드가 필요하면 ts-pattern" 안내로 후퇴 가능).
 2. **`show` truthy 범위** — `null|undefined|false`만 걷을지, `''`/`0`까지 falsy로
    볼지. `''`/`0`은 타입 narrow가 지저분해짐 → 우선 3개만 (Solid 준함).
 3. **네이밍 충돌** — `match()` 함수와 Solid `<Match>`가 헷갈림. 가드 체인을 만들면

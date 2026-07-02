@@ -1,4 +1,4 @@
 export { match } from './match.ts'
-export { createMatch } from './when.tsx'
-export type { Arms, Discriminant, Matchable, Narrow, Pattern, Render } from './types.ts'
-export type { MatchControls } from './when.tsx'
+export { cond } from './cond.ts'
+export type { Cond } from './cond.ts'
+export type { Arms, Discriminant, Matchable, Narrow, Pattern } from './types.ts'
