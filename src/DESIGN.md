@@ -198,9 +198,16 @@ export function each<T, R = ReactNode>(
    - `when(pattern, render)` / `when(pattern, guard, render)` / `when(predicate, render)`
    - 터미널 `otherwise` / `run()`(→ `undefined`) / `exhaustive()`(→ throw)
    - first-match-wins, 매칭된 arm의 render만 실행
-     > ts-pattern과 표면이 겹치는 점은 인정. 차별점은 (a) zero-dep·초소형, (b) `match`
-     > 코어와 한 패키지에서 exhaustive↔flexible 스펙트럼을 이룬다는 것. 이 경계가 얇아지면
-     > Phase 3에서 재검토(→ "가드가 필요하면 ts-pattern" 안내로 후퇴 가능).
+     > **ts-pattern 대비 [실측 정정]** — 이전에 적었던 "차별점 = zero-dep"은 **오류**다.
+     > ts-pattern 5.9.0도 런타임 의존이 0이다. 실측(esbuild bundle+minify+gzip):
+     > matchx 전체 630 B vs ts-pattern `match`+`P` 2,685 B, 매처만 비교하면 493 B vs
+     > 1,792 B. 그리고 결정적으로 ts-pattern의 `.exhaustive()`는 **컴파일타임**이며
+     > 누락 멤버를 `NonExhaustiveError<...>`로 지목한다 — `cond.exhaustive()`는 런타임뿐.
+     > `P.select`/`P.not`/`P.optional` 등 패턴 어휘도 훨씬 넓다. 즉 **`cond`는 매처로서
+     > ts-pattern에 밀린다**(크기 제외). `cond`의 존재 근거는 "렌더 안의 단순 가드 분기를
+     > 두 번째 의존 없이 493 B로 덮는 것"이며, 본격 패턴 매칭이 필요하면 ts-pattern을
+     > 쓰라고 안내해야 한다. matchx의 정체성은 매처가 아니라 `match`(레코드 arms,
+     > 컴파일타임 exhaustive, 순서 독립·섀도잉 불가) + `show`/`each` 렌더 패밀리에 있다.
 2. ~~**`show` truthy 범위**~~ **[확정]** → **`null|undefined`만 걷는다**(`NonNullable<T>`).
    당초 `false`까지 걷으려 `Exclude<T, null|undefined|false>`(가칭 `Truthy<T>`)를 썼으나,
    그 커스텀 conditional을 파라미터 위치에 두면 `otherwise` 없는 2-arg 호출에서 `T`가
@@ -218,8 +225,12 @@ export function each<T, R = ReactNode>(
    반환 타입 구분) + `show.test.ts`/`show.test-d.ts`. `index.ts` export, README 갱신.
 2. ~~**Phase 2 — `each`**~~ **[완료]** `src/each.ts`(임의 `Iterable<T>` + 빈-`fallback`,
    반환은 `ReactNode`) + `each.test.ts`/`each.test-d.ts`(Array/Map/Set/generator).
-   §8.3의 `<T, R = ReactNode>` 제네릭은 리스트가 본질적으로 노드를 내므로 불필요 →
-   `R` 제거하고 `ReactNode` 고정. key는 마법 처리 없음(render가 keyed element 반환).
+   key는 마법 처리 없음(render가 keyed element 반환).
+   > **`R` 제네릭 [정정]**: 한때 "리스트는 본질적으로 노드를 내므로 `R` 불필요"라며
+   > `ReactNode`로 고정했으나 **되돌렸다**. `match`/`cond`/`show`/`iife`가 모두 `R`을
+   > 흘려보내는데 `each`만 고정하는 건 패밀리 내 비일관이고, `each`를 타입 있는 map으로
+   > 쓰지 못하게 막았다. 현재 `each<T, R, F>` + 오버로드로 `fallback` 유무에 따라
+   > `R[] | F` / `R[] | null`을 구분한다(`show`와 동일한 구조).
    > **Iterator Helpers 관련 [확정]**: `.map/.filter/.take/…`나 `Iterator.from()`을
    > 재구현하지 않는다. 이건 네이티브(Node 22+/모던 브라우저)이고 lazy 변환 담당.
    > `each`는 `Iterable<T>`를 받으므로 helper 체인 결과(`IteratorObject`)를 그대로
@@ -299,3 +310,46 @@ matchx의 존재 이유(§1)는 JSX slot의 `(() => { … })()`를 없애는 것
 IIFE를 **이름 붙여** 다시 싣는다 — 오리진 스토리에 대한 윙크. `iife(body) = body()`.
 타입 스토리 없음(§8.2 원칙에서 유일하게 면제되는 항목), narrowing·exhaustive 없음.
 정직한 escape hatch이자 농담. "유니온이면 `match`/`cond`를 쓰라"는 안내를 문서에 못박음.
+
+---
+
+## 12. 코드리뷰 반영 (JSX 제어흐름 툴킷 관점)
+
+### 12.1 `cond` 패턴 의미론 — "조용한 match-all" 제거
+
+`matches()`가 세 경로에서 **모든 값에 매칭**되어 뒤 arm을 전부 죽이는 버그가 있었다.
+셋 다 캐스팅 없이 공개 타입 API로 도달 가능했고, 증상이 예외가 아니라 **잘못된 렌더**라
+가장 위험한 부류였다. 기존 테스트가 평평한 문자열 discriminant만 덮어 잡히지 않았다.
+
+| 대상                        | 이전 (버그)                                                   | 현재 (확정)                                                                 |
+| --------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `when(undefined,…)`         | `pattern === undefined`를 "패턴 없음" 센티널로 씀 → 전부 매칭 | `hasPattern` 플래그 분리, `undefined`는 정상 패턴                           |
+| 배열 패턴                   | **prefix** 매칭 → `[]`가 모든 배열에 매칭                     | **exact length** → `[]` = "빈 배열"                                         |
+| `Date`/`Map`/`Set`/`RegExp` | `Object.entries`가 `[]` → 공허참 → 모든 객체에 매칭           | 구조 매칭은 **plain object 한정**; `Date`는 instant 비교, 나머지는 identity |
+
+의사결정 근거: 렌더링 도메인에서 `[]`("빈 리스트면 fallback")와 날짜 비교는 흔한
+반면, prefix 매칭·클래스 인스턴스의 구조 매칭을 원하는 경우는 드물다. 애매하면
+**매칭 안 함**이 안전하다 — 잘못 렌더하느니 다음 arm으로 넘어가는 편이 낫다.
+
+### 12.2 진단 메시지
+
+- `cond.exhaustive()`가 `JSON.stringify`로 값을 찍다가 순환참조·BigInt에서 **자신이
+  throw**해 `[matchx] non-exhaustive`가 무관한 `TypeError`로 가려졌다 → `describe()`
+  (`src/internal.ts`)로 안전 직렬화.
+- `match`의 arm 조회가 프로토타입 체인에 닿아 discriminant가 `'toString'`이면
+  `Object.prototype.toString`이 호출되고 `partial`의 fallback도 건너뛰었다 →
+  `hasOwnProperty` + `typeof === 'function'` 검사. 런타임 경계를 넘어온 미지의
+  discriminant는 이제 `[matchx] no arm for discriminant …`로 실패한다.
+
+### 12.3 패밀리 일관성
+
+- `show`가 두 갈래를 하나의 `R`로 강제해 `show(count, n => n*2, () => 'none')`이
+  컴파일되지 않았다 → `R1`/`R2` 분리(`cond`의 `R | R2` 누적과 정합).
+- `each`의 `R` 제네릭 복원(§8.5 참조).
+
+### 12.4 패키징 — node10 소비자
+
+`exports`만 있고 top-level `main`/`types`가 없어 `moduleResolution: "node"`(TS 5.x)
+소비자에게 `TS2307` + implicit any가 발생, **라이브러리의 존재 이유인 타입이 통째로
+소실**됐다. `main`/`types` 추가로 해결(실측 검증: 추가 전 실패 → 추가 후 통과).
+`vp config`가 덮어쓰지 않는 것도 확인. TS 6.0부터는 `node10`이 제거되어 해당 없음.

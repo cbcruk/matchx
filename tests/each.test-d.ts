@@ -37,6 +37,28 @@ export const wrongIndex = each(users, (u, i) =>
   i.toUpperCase(),
 )
 
+/* --- positive: R flows through, so `each` is usable as a typed map --------- */
+
+export const doubled: number[] | null = each([1, 2, 3], (n) => n * 2)
+
+/* --- positive: the fallback may differ in type from the item render -------- */
+
+export const withFallback: string[] | number = each(
+  ['a'],
+  (s) => s,
+  () => 0,
+)
+
+/* --- positive: a native Iterator Helper chain is accepted ------------------ */
+
+export const helpers = each(
+  users
+    .values()
+    .filter((u) => u.id > 0)
+    .take(10),
+  (u) => u.name,
+)
+
 /* --- negative: a non-iterable is rejected --------------------------------- */
 
 // @ts-expect-error a plain number is not an Iterable

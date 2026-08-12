@@ -119,12 +119,15 @@ keyed elements, exactly as `.map` requires:
 }
 ```
 
-Empty and no `fallback` → `null`.
+Empty and no `fallback` → `null`. The render's return type flows through, so
+`each` doubles as a typed map (`each([1, 2], (n) => n * 2)` → `number[] | null`).
 
 Because `each` takes any `Iterable`, it's the **render terminal for native
 [Iterator Helpers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator)** —
 do the lazy `map` / `filter` / `take` with the platform, then let `each`
-materialize the result. `each` deliberately does **not** reimplement them:
+materialize the result. `each` deliberately does **not** reimplement them.
+(Typing the chain needs `"lib": ["esnext"]` — or ES2025 — plus a runtime with
+Iterator Helpers, e.g. Node 22+. `each` itself only requires `Iterable`.)
 
 ```tsx
 {
@@ -172,6 +175,17 @@ import { cond } from 'matchx'
   if any alternative does, and narrows to the **union** of the members they pick.
 - Terminals: `otherwise(render)` always produces a result; `run()` returns the
   match or `undefined`; `exhaustive()` throws at runtime if nothing matched.
+
+How a pattern matches, precisely — the rules exist so that no pattern silently
+becomes a match-all:
+
+| Pattern                             | Matches                                                      |
+| ----------------------------------- | ------------------------------------------------------------ |
+| primitive                           | `Object.is` equality (`undefined` matches only `undefined`)  |
+| `{}`-style object                   | **deep-partial** — only the keys you name are checked        |
+| array                               | **exact length**, element-wise (so `[]` means "empty array") |
+| `Date`                              | same instant                                                 |
+| `Map`/`Set`/`RegExp`/class instance | reference identity only (use a guard for more)               |
 
 ```tsx
 {

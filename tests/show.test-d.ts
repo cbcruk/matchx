@@ -23,6 +23,16 @@ export const withFallback: string = show(
   () => 'guest',
 )
 
+/* --- positive: the two branches may return different types ----------------- */
+
+declare const count: number | null
+
+export const mixed: number | string = show(
+  count,
+  (n) => n * 2,
+  () => 'none',
+)
+
 /* --- negative: without otherwise the result may be null -------------------- */
 
 // @ts-expect-error result is `string | null` when otherwise is omitted

@@ -115,3 +115,73 @@ test('cond anyOf still respects a guard', () => {
   expect(run({ status: 'error', message: 'boom', code: 1 })).toBe('err')
   expect(run({ status: 'success', data: [] })).toBe('other')
 })
+
+/* --- pattern semantics: each of these once matched EVERY value ------------- */
+
+test('cond treats undefined as a real pattern, not a match-all sentinel', () => {
+  const run = (v: number | undefined) =>
+    cond(v)
+      .when(undefined, () => 'nothing')
+      .when(1, () => 'one')
+      .otherwise(() => 'other')
+
+  expect(run(undefined)).toBe('nothing')
+  expect(run(1)).toBe('one')
+  expect(run(2)).toBe('other')
+})
+
+test('cond array pattern [] means the empty array, not any array', () => {
+  const run = (v: number[]) =>
+    cond(v)
+      .when([], () => 'empty')
+      .otherwise(() => 'non-empty')
+
+  expect(run([])).toBe('empty')
+  expect(run([1, 2, 3])).toBe('non-empty')
+})
+
+test('cond array patterns match by exact length, not by prefix', () => {
+  const run = (v: number[]) =>
+    cond(v)
+      .when([1, 2], () => 'pair')
+      .otherwise(() => 'other')
+
+  expect(run([1, 2])).toBe('pair')
+  expect(run([1, 2, 3])).toBe('other')
+})
+
+test('cond matches Date patterns by instant, not identity or match-all', () => {
+  const run = (v: { at: Date }) =>
+    cond(v)
+      .when({ at: new Date('2020-01-01') }, () => 'y2020')
+      .otherwise(() => 'other')
+
+  expect(run({ at: new Date('2020-01-01') })).toBe('y2020')
+  expect(run({ at: new Date('1999-01-01') })).toBe('other')
+})
+
+test('cond does not treat a non-plain-object pattern as match-all', () => {
+  const run = (v: { items: Map<string, number> }) =>
+    cond(v)
+      .when({ items: new Map([['a', 1]]) }, () => 'matched')
+      .otherwise(() => 'other')
+
+  expect(run({ items: new Map([['b', 2]]) })).toBe('other')
+})
+
+test('exhaustive reports non-exhaustive even for unstringifiable values', () => {
+  const circular: Record<string, unknown> = {}
+  circular.self = circular
+
+  expect(() =>
+    cond(circular)
+      .when({ nope: 1 }, () => 'x')
+      .exhaustive(),
+  ).toThrow(/non-exhaustive/)
+
+  expect(() =>
+    cond(1n)
+      .when(2n, () => 'x')
+      .exhaustive(),
+  ).toThrow(/non-exhaustive/)
+})

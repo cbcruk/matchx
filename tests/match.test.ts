@@ -46,6 +46,24 @@ test('partial uses the matching arm when present', () => {
   expect(out).toBe('spin')
 })
 
+test('match ignores inherited Object.prototype members as arms', () => {
+  type Weird = { kind: 'toString' } | { kind: 'ok' }
+
+  const out = match({ kind: 'toString' } as Weird, 'kind').partial(
+    { ok: () => 'ok' },
+    () => 'fallback',
+  )
+
+  expect(out).toBe('fallback')
+})
+
+test('match throws a matchx error for an unknown runtime discriminant', () => {
+  type S = { kind: 'a' } | { kind: 'b' }
+  const rogue = { kind: 'c' } as unknown as S
+
+  expect(() => match(rogue, 'kind').match({ a: () => 1, b: () => 2 })).toThrow(/\[matchx\] no arm/)
+})
+
 test('partial uses the fallback when the arm is absent', () => {
   const out = match({ status: 'success', data: [] } as State, 'status').partial(
     { loading: () => 'spin' },
