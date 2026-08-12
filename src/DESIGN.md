@@ -353,3 +353,55 @@ IIFE를 **이름 붙여** 다시 싣는다 — 오리진 스토리에 대한 윙
 소비자에게 `TS2307` + implicit any가 발생, **라이브러리의 존재 이유인 타입이 통째로
 소실**됐다. `main`/`types` 추가로 해결(실측 검증: 추가 전 실패 → 추가 후 통과).
 `vp config`가 덮어쓰지 않는 것도 확인. TS 6.0부터는 `node10`이 제거되어 해당 없음.
+
+---
+
+## 13. 네이밍 — `render*` 접두사 [확정]
+
+### 13.1 문제
+
+기존 이름(`match`/`cond`/`each`/`show`)은 **차용한 라이브러리 이름을 그대로 따라간**
+것이라 두 가지 대가가 있었다.
+
+| export  | 충돌 대상                                 |
+| ------- | ----------------------------------------- |
+| `match` | **ts-pattern**, react-router(`matchPath`) |
+| `cond`  | **lodash `_.cond`**, ramda `cond`         |
+| `each`  | lodash `_.each`                           |
+| `anyOf` | ajv / JSON Schema                         |
+
+특히 `match`는 자기모순이었다 — §8.4에서 "본격 패턴 매칭이 필요하면 ts-pattern을
+쓰라"고 권해놓고, 그러면 같은 파일에서 두 `match`가 충돌해 alias가 강제된다.
+
+### 13.2 결정
+
+렌더링 primitive에만 **`render*` 접두사**를 붙인다. 0.x 미배포이므로 구 이름은
+남기지 않고 **전면 교체**(deprecated alias 없음).
+
+| 이전                       | 현재                            |
+| -------------------------- | ------------------------------- |
+| `match(v, on).match(arms)` | `renderMatch(v, on).arms(arms)` |
+| `match(v, on).partial(…)`  | `renderMatch(v, on).partial(…)` |
+| `show(…)`                  | `renderShow(…)`                 |
+| `each(…)`                  | `renderEach(…)`                 |
+| `cond(v).when(…)`          | `renderCond(v).when(…)`         |
+| `anyOf(…)` / `iife(…)`     | **그대로**                      |
+
+### 13.3 근거와 예외
+
+- **충돌 제거** — ts-pattern 병용이 우리가 권장하는 조합이므로 필수.
+- **도메인 명시** — §8.4에서 확정한 "패턴 매칭 라이브러리가 아니라 JSX 제어흐름
+  툴킷"이라는 정체성을 이름이 직접 말한다.
+- **stutter 해소** — `match(...).match(...)`는 원래도 어색했다. 접두사를 붙이면
+  `renderMatch(...).match(...)`로 더 나빠지므로 터미널을 **`.arms(...)`**로 바꿨다.
+  `arms`는 이미 이 라이브러리의 도메인 용어(`Arms<T,D,R>` 타입)라 정합적이다.
+- **`anyOf`/`iife` 예외** — 렌더러가 아니다. `anyOf`는 패턴 조합자, `iife`는 탈출구.
+  `renderAnyOf`는 "렌더하지 않는데 render라 부르는" 거짓말이 된다.
+- **타입 이름은 유지** — `Cond`/`Matchable`/`Arms`/`Pattern` 등은 동작이 아니라
+  **형태를 서술하는 명사**이고, 값 공간에서 충돌하지도 않는다.
+
+> 반대 논거도 기록해둔다: ESM에서 이름 충돌의 관용적 해법은 접두사가 아니라
+> `import * as mx` / `import { match as … }` 별칭이다. 그럼에도 접두사를 택한 이유는,
+> 이 라이브러리가 간결함이 아니라 **명시성**으로 승부하는 물건(그게 IIFE를 대체하는
+> 이유)이고, JSX 마크업 더미 속에서 제어흐름 호출이 시각적으로 드러나는 값이 호출당
+> 6자보다 크다고 봤기 때문이다.

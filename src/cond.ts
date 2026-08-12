@@ -4,11 +4,11 @@ import type { Narrow, Pattern } from './types.ts'
 /* -------------------------------------------------------------------------- */
 /*  Function-form guard chain — the flexible, NON-exhaustive counterpart.      */
 /*                                                                            */
-/*  `match` is closed and exhaustive over a single discriminant. `cond` trades */
-/*  that away for guards and deep patterns: use it when a branch depends on     */
-/*  more than one discriminant. Unlike the old `<When>` JSX sibling, this is a  */
-/*  plain expression — it drops into a `{}` slot with no wrapper element, the   */
-/*  same shape as `match`. First matching arm wins; only its `render` runs.     */
+/*  `renderMatch` is closed and exhaustive over a single discriminant.         */
+/*  `renderCond` trades that away for guards and deep patterns: use it when a  */
+/*  branch depends on more than one discriminant. Like the rest of the family  */
+/*  it is a plain expression — it drops into a `{}` slot with no wrapper       */
+/*  element. First matching arm wins; only its `render` runs.                  */
 /* -------------------------------------------------------------------------- */
 
 function matches(value: unknown, pattern: unknown): boolean {
@@ -55,7 +55,7 @@ export interface AnyOf<P> {
  *
  * @example
  * ```tsx
- * cond(state)
+ * renderCond(state)
  *   .when(anyOf({ status: 'error' }, { status: 'timeout' }), (s) => <ErrorView s={s} />)
  *   .otherwise((s) => <Content state={s} />)
  * //  s: the 'error' | 'timeout' members
@@ -120,14 +120,14 @@ export interface Cond<T, R = never> {
  *
  * @example
  * ```tsx
- * {cond(state)
+ * {renderCond(state)
  *   .when({ status: 'error' }, (s) => s.code >= 500, (s) => <Fatal code={s.code} />)
  *   .when({ status: 'error' }, (s) => <Error msg={s.message} />)
  *   .when({ status: 'loading' }, () => <Spinner />)
  *   .otherwise((s) => <Content state={s} />)}
  * ```
  */
-export function cond<T>(value: T): Cond<T> {
+export function renderCond<T>(value: T): Cond<T> {
   let matched = false
   let result: unknown
 
@@ -175,7 +175,7 @@ export function cond<T>(value: T): Cond<T> {
     },
     exhaustive() {
       if (!matched) {
-        throw new Error(`[matchx] non-exhaustive cond for value: ${describe(value)}`)
+        throw new Error(`[matchx] non-exhaustive renderCond for value: ${describe(value)}`)
       }
       return result as never
     },

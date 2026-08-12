@@ -1,4 +1,4 @@
-import { anyOf, cond } from '../src/cond.ts'
+import { anyOf, renderCond } from '../src/cond.ts'
 
 /* -------------------------------------------------------------------------- */
 /*  Type-level tests for the `cond` guard chain. Not run by vitest; the         */
@@ -14,14 +14,14 @@ declare const state: State
 
 /* --- positive: a pattern arm narrows its render argument ------------------ */
 
-export const narrowed = cond(state)
+export const narrowed = renderCond(state)
   .when({ status: 'error' }, (s) => s.message)
   .when({ status: 'success' }, (s) => String(s.data.length))
   .otherwise((s) => s.status)
 
 /* --- positive: R is the union of every arm's return type ------------------ */
 
-export const asUnion: number | string = cond(state)
+export const asUnion: number | string = renderCond(state)
   .when({ status: 'error' }, () => 1)
   .otherwise(() => 'x')
 
@@ -29,20 +29,20 @@ export const asUnion: number | string = cond(state)
 
 const isError = (s: State): s is Extract<State, { status: 'error' }> => s.status === 'error'
 
-export const guarded = cond(state)
+export const guarded = renderCond(state)
   .when(isError, (s) => s.message)
   .otherwise(() => 'other')
 
 /* --- negative: an arm cannot read fields outside its narrowed member ------- */
 
-export const wrongField = cond(state)
+export const wrongField = renderCond(state)
   // @ts-expect-error 'data' does not exist on the 'error' member
   .when({ status: 'error' }, (s) => s.data)
   .otherwise(() => null)
 
 /* --- negative: a pattern must be shaped like the union ---------------------- */
 
-export const badPattern = cond(state)
+export const badPattern = renderCond(state)
   // @ts-expect-error 'idle' is not a valid discriminant value
   .when({ status: 'idle' }, () => 'idle')
   .otherwise(() => null)
@@ -50,19 +50,19 @@ export const badPattern = cond(state)
 /* --- negative: run() has no fallback, so the result may be undefined -------- */
 
 // @ts-expect-error run() can return undefined when nothing matches
-export const mustHandleUndefined: string = cond(state)
+export const mustHandleUndefined: string = renderCond(state)
   .when({ status: 'error' }, (s) => s.message)
   .run()
 
 /* --- positive: anyOf narrows to the union of the matched members ----------- */
 
-export const orNarrowed = cond(state)
+export const orNarrowed = renderCond(state)
   .when(anyOf({ status: 'loading' }, { status: 'error' }), (s) => s.status)
   .otherwise(() => 'other')
 
 /* --- negative: an anyOf arm only sees fields common to the whole union ------ */
 
-export const orWrongField = cond(state)
+export const orWrongField = renderCond(state)
   .when(
     anyOf({ status: 'loading' }, { status: 'error' }),
     (s) =>
@@ -73,7 +73,7 @@ export const orWrongField = cond(state)
 
 /* --- negative: anyOf alternatives must still be valid patterns ------------- */
 
-export const orBadPattern = cond(state)
+export const orBadPattern = renderCond(state)
   // @ts-expect-error 'idle' is not a valid discriminant value
   .when(anyOf({ status: 'error' }, { status: 'idle' }), () => 'x')
   .otherwise(() => null)
