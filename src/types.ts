@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 /* -------------------------------------------------------------------------- */
-/*  Core (`match`) types                                                       */
+/*  Core (`renderMatch`) types                                                 */
 /* -------------------------------------------------------------------------- */
 
 /** The literal value behind a discriminant key `D` of union member `T`. */
@@ -17,7 +17,7 @@ export interface Matchable<T extends Record<D, PropertyKey>, D extends keyof T> 
    * Exhaustive match. `R` is inferred from the arms and unified across all of
    * them — omit a discriminant value and it's a compile error.
    */
-  match<R = ReactNode>(arms: Arms<T, D, R>): R
+  arms<R = ReactNode>(arms: Arms<T, D, R>): R
 
   /**
    * Escape hatch when you only care about a few states. Loses exhaustiveness
@@ -27,7 +27,7 @@ export interface Matchable<T extends Record<D, PropertyKey>, D extends keyof T> 
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Guard-chain (`cond`) types                                                 */
+/*  Guard-chain (`renderCond`) types                                           */
 /* -------------------------------------------------------------------------- */
 
 /** A deep-partial shape used to match against a value of type `T`. */

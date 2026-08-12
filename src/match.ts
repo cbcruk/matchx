@@ -5,7 +5,7 @@ import type { Discriminant, Matchable } from './types.ts'
 /*  Borrowed from neverthrow's `.match` — the SHAPE, not the implementation.  */
 /*                                                                            */
 /*  Kept:                                                                     */
-/*    • value wrapped → terminal `.match` consumes it (fluent, no JSX element)*/
+/*    • value wrapped → terminal `.arms` consumes it (fluent, no JSX element) */
 /*    • closed arm object → every discriminant required → exhaustive          */
 /*    • all arms share one return type (neverthrow: "both fns must return     */
 /*      the same type") → here every arm returns ReactNode                    */
@@ -24,21 +24,21 @@ import type { Discriminant, Matchable } from './types.ts'
  *
  * @example
  * ```tsx
- * {match(state, 'status').match({
+ * {renderMatch(state, 'status').arms({
  *   loading: () => <Spinner />,
  *   error: (s) => <Error msg={s.message} />,
  *   success: (s) => <Content data={s.data} />,
  * })}
  * ```
  */
-export function match<T extends Record<D, PropertyKey>, D extends keyof T>(
+export function renderMatch<T extends Record<D, PropertyKey>, D extends keyof T>(
   value: T,
   on: D,
 ): Matchable<T, D> {
   const key = value[on] as Discriminant<T, D>
 
   return {
-    match(arms) {
+    arms(arms) {
       const arm = armFor<T>(arms, key)
       if (!arm) {
         // Types make this unreachable; a value crossing a runtime boundary

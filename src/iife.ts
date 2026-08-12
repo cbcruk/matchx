@@ -8,7 +8,7 @@
 /*  names the escape hatch for the rare slot where you genuinely want           */
 /*  procedural code and none of the guarantees.                                 */
 /*                                                                            */
-/*  If your branches are a union, you wanted `match`/`cond`. You know this.     */
+/*  If your branches are a union, you wanted renderMatch/renderCond. You know. */
 /* -------------------------------------------------------------------------- */
 
 /**

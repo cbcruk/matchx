@@ -18,17 +18,20 @@ import type { ReactNode } from 'react'
  *
  * @example
  * ```tsx
- * {show(user, (u) => <Profile user={u} />, () => <Guest />)}
- * //             u: NonNullable — null | undefined removed
+ * {renderShow(user, (u) => <Profile user={u} />, () => <Guest />)}
+ * //                   u: NonNullable — null | undefined removed
  * ```
  */
-export function show<T, R1 = ReactNode, R2 = R1>(
+export function renderShow<T, R1 = ReactNode, R2 = R1>(
   when: T,
   then: (value: NonNullable<T>) => R1,
   otherwise: () => R2,
 ): R1 | R2
-export function show<T, R1 = ReactNode>(when: T, then: (value: NonNullable<T>) => R1): R1 | null
-export function show<T, R1, R2>(
+export function renderShow<T, R1 = ReactNode>(
+  when: T,
+  then: (value: NonNullable<T>) => R1,
+): R1 | null
+export function renderShow<T, R1, R2>(
   when: T,
   then: (value: NonNullable<T>) => R1,
   otherwise?: () => R2,

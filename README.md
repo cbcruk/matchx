@@ -22,15 +22,15 @@ exhaustiveness check. Nested ternaries narrow but read terribly.
 
 ## The fix
 
-Wrap the value, consume it in a terminal `.match` with a **closed arm object**.
+Wrap the value, consume it in a terminal `.arms` with a **closed arm object**.
 Miss a branch and it's a **compile error**; each arm is **narrowed**; the whole
 thing is an expression, so it drops straight into the JSX slot.
 
 ```tsx
-import { match } from 'matchx'
+import { renderMatch } from 'matchx'
 
 {
-  match(state, 'status').match({
+  renderMatch(state, 'status').arms({
     loading: () => <Spinner />,
     error: (s) => <Error msg={s.message} />, // s: { status: 'error'; message: string }
     success: (s) => <Content data={s.data} />, // s: { status: 'success'; data: number[] }
@@ -43,6 +43,25 @@ import { match } from 'matchx'
 - All arms must return the same type (borrowed from neverthrow) — which lines up
   exactly with JSX's "every branch resolves to a `ReactNode`".
 
+## Naming
+
+Every rendering primitive is prefixed **`render*`**. That is deliberate: the
+obvious short names are all taken by libraries you may well be using in the same
+file — `match` by [ts-pattern](https://github.com/gvergnaud/ts-pattern), `cond`
+and `each` by lodash/ramda, `anyOf` by JSON Schema tooling. Since this README
+actively recommends reaching for ts-pattern when you need real pattern matching,
+colliding with it would be self-defeating:
+
+```tsx
+import { renderMatch, renderShow, renderEach, renderCond } from 'matchx'
+import { match } from 'ts-pattern' // no clash
+```
+
+The prefix also names the domain — these are **rendering** primitives, not a
+general pattern-matching kit — and makes the family discoverable from one
+autocomplete on `render`. Two exports stay unprefixed on purpose: `anyOf` is a
+pattern combinator and `iife` is an escape hatch; neither renders anything.
+
 ## Install
 
 ```bash
@@ -52,32 +71,34 @@ pnpm add matchx
 
 ## API
 
-### `match(value, on).match(arms)`
+### `renderMatch(value, on).arms(arms)`
 
 The core. `on` is the discriminant key. `arms` is closed and exhaustive.
 `R` is inferred from the arms and defaults to `ReactNode`, so you can also return
 plain values:
 
 ```ts
-const label = match(state, 'status').match({
+const label = renderMatch(state, 'status').arms({
   loading: () => 'Loading…',
   error: (s) => s.message,
   success: (s) => `${s.data.length} items`,
 }) // => string
 ```
 
-### `match(value, on).partial(arms, fallback)`
+### `renderMatch(value, on).partial(arms, fallback)`
 
 Escape hatch when you only care about a few states. Drops exhaustiveness on
 purpose, so it demands an explicit `fallback` (cf. neverthrow's `unwrapOr`):
 
 ```tsx
 {
-  match(state, 'status').partial({ error: (s) => <Error msg={s.message} /> }, () => <Spinner />)
+  renderMatch(state, 'status').partial({ error: (s) => <Error msg={s.message} /> }, () => (
+    <Spinner />
+  ))
 }
 ```
 
-### `show(when, then, otherwise?)` — truthy-narrowing conditional
+### `renderShow(when, then, otherwise?)` — truthy-narrowing conditional
 
 The two-branch case, borrowed from Solid's `<Show>` but as a plain expression.
 When `when` is truthy, `then` receives it with `null | undefined` removed
@@ -85,7 +106,7 @@ When `when` is truthy, `then` receives it with `null | undefined` removed
 
 ```tsx
 {
-  show(
+  renderShow(
     user,
     (u) => <Profile user={u} />,
     () => <Guest />,
@@ -98,7 +119,7 @@ When `when` is truthy, `then` receives it with `null | undefined` removed
 - `false` / `0` / `''` route to `otherwise` at runtime, but only `null` and
   `undefined` are removed from the value's type.
 
-### `each(items, render, fallback?)` — iterable list
+### `renderEach(items, render, fallback?)` — iterable list
 
 Solid's `<For>` as a plain expression. Over a bare `.map` it adds two things:
 it takes **any `Iterable`** (Map, Set, a generator — no spreading), and it folds
@@ -107,7 +128,7 @@ keyed elements, exactly as `.map` requires:
 
 ```tsx
 {
-  each(
+  renderEach(
     users,
     (u) => <Row key={u.id} user={u} />,
     () => <Empty />,
@@ -115,23 +136,23 @@ keyed elements, exactly as `.map` requires:
 }
 
 {
-  each(byId, ([id, u]) => <Row key={id} user={u} />) // byId: Map<Id, User>
+  renderEach(byId, ([id, u]) => <Row key={id} user={u} />) // byId: Map<Id, User>
 }
 ```
 
 Empty and no `fallback` → `null`. The render's return type flows through, so
-`each` doubles as a typed map (`each([1, 2], (n) => n * 2)` → `number[] | null`).
+`renderEach` doubles as a typed map (`renderEach([1, 2], (n) => n * 2)` → `number[] | null`).
 
-Because `each` takes any `Iterable`, it's the **render terminal for native
+Because `renderEach` takes any `Iterable`, it's the **render terminal for native
 [Iterator Helpers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator)** —
-do the lazy `map` / `filter` / `take` with the platform, then let `each`
-materialize the result. `each` deliberately does **not** reimplement them.
+do the lazy `map` / `filter` / `take` with the platform, then let `renderEach`
+materialize the result. `renderEach` deliberately does **not** reimplement them.
 (Typing the chain needs `"lib": ["esnext"]` — or ES2025 — plus a runtime with
-Iterator Helpers, e.g. Node 22+. `each` itself only requires `Iterable`.)
+Iterator Helpers, e.g. Node 22+. `renderEach` itself only requires `Iterable`.)
 
 ```tsx
 {
-  each(
+  renderEach(
     users
       .values()
       .filter((u) => u.active)
@@ -142,18 +163,18 @@ Iterator Helpers, e.g. Node 22+. `each` itself only requires `Iterable`.)
 }
 ```
 
-### `cond(value).when(…).otherwise(…)` — guard chain
+### `renderCond(value).when(…).otherwise(…)` — guard chain
 
 For branches that depend on more than a single discriminant (guards, deep
 patterns). This is **non-exhaustive by design** — the flexible counterpart to
-`match`. Like `match`, it's a plain expression (no JSX element), so it drops
+`renderMatch`. Like `renderMatch`, it's a plain expression (no JSX element), so it drops
 straight into a `{}` slot:
 
 ```tsx
-import { cond } from 'matchx'
+import { renderCond } from 'matchx'
 
 {
-  cond(state)
+  renderCond(state)
     .when(
       { status: 'error' },
       (s) => s.code >= 500,
@@ -189,7 +210,7 @@ becomes a match-all:
 
 ```tsx
 {
-  cond(state)
+  renderCond(state)
     .when(anyOf({ status: 'error' }, { status: 'timeout' }), (s) => <ErrorView s={s} />)
     //     s: the 'error' | 'timeout' members — one arm, no duplicated render
     .otherwise((s) => <Content state={s} />)
@@ -212,7 +233,7 @@ slot where you genuinely want procedural code and none of the guarantees:
 }
 ```
 
-If your branches are a union, you wanted `match` / `cond`. You know this.
+If your branches are a union, you wanted `renderMatch` / `renderCond`. You know this.
 
 ## Borrowed, not bundled
 

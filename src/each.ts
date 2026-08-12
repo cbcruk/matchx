@@ -9,9 +9,9 @@ import type { ReactNode } from 'react'
 /*  the empty-state `fallback` in. It does NOT solve keys: `render` must return */
 /*  keyed elements, exactly as `.map` requires.                                */
 /*                                                                            */
-/*  Taking any `Iterable` also makes `each` the render terminal for native     */
+/*  Taking any `Iterable` also makes it the render terminal for native         */
 /*  Iterator Helpers: do the lazy map/filter/take with the platform, then let  */
-/*  `each` materialize the result. We deliberately do NOT reimplement them.    */
+/*  `renderEach` materialize the result. We deliberately do NOT reimplement.   */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -19,21 +19,21 @@ import type { ReactNode } from 'react'
  *
  * @example
  * ```tsx
- * {each(users, (u) => <Row key={u.id} user={u} />, () => <Empty />)}
+ * {renderEach(users, (u) => <Row key={u.id} user={u} />, () => <Empty />)}
  * // Map/Set/generator work too — T is inferred from the iterable:
- * {each(byId, ([id, u]) => <Row key={id} user={u} />)} // byId: Map<Id, User>
+ * {renderEach(byId, ([id, u]) => <Row key={id} user={u} />)} // byId: Map<Id, User>
  * ```
  */
-export function each<T, R = ReactNode, F = R>(
+export function renderEach<T, R = ReactNode, F = R>(
   items: Iterable<T>,
   render: (item: T, index: number) => R,
   fallback: () => F,
 ): R[] | F
-export function each<T, R = ReactNode>(
+export function renderEach<T, R = ReactNode>(
   items: Iterable<T>,
   render: (item: T, index: number) => R,
 ): R[] | null
-export function each<T, R, F>(
+export function renderEach<T, R, F>(
   items: Iterable<T>,
   render: (item: T, index: number) => R,
   fallback?: () => F,
