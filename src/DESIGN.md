@@ -405,3 +405,57 @@ IIFE를 **이름 붙여** 다시 싣는다 — 오리진 스토리에 대한 윙
 > 이 라이브러리가 간결함이 아니라 **명시성**으로 승부하는 물건(그게 IIFE를 대체하는
 > 이유)이고, JSX 마크업 더미 속에서 제어흐름 호출이 시각적으로 드러나는 값이 호출당
 > 6자보다 크다고 봤기 때문이다.
+
+---
+
+## 14. arm 어휘 통일 — `Some`/`None` 차용 [확정]
+
+### 14.1 문제 — 분기 문법이 두 개였다
+
+`renderMatch`는 **명명된 arm 객체**인데 `renderShow`/`renderEach`는 **위치 인자
+콜백**이었다. 같은 "분기해서 렌더한다"를 두 문법으로 표현하고 있었고, §4의 코어
+DNA("값을 감싸 terminal에서 소비")도 코어만 따르고 있었다.
+
+```tsx
+renderMatch(state, 'status').arms({ loading: …, error: …, success: … })  // 명명
+renderShow(user, (u) => …, () => …)                                       // 위치
+renderEach(users, (u) => …, () => …)                                      // 위치
+```
+
+### 14.2 결정
+
+패밀리 전체를 **`renderX(값).arms({…})`** 한 형태로 통일한다. arm 이름은 각
+primitive가 실제로 분기하는 축의 어휘를 쓴다.
+
+| primitive     | arm             | 어휘 출처                     |
+| ------------- | --------------- | ----------------------------- |
+| `renderMatch` | discriminant 값 | 도메인(유니온 자체)           |
+| `renderShow`  | `some`/`none`   | **Option** (Rust/neverthrow)  |
+| `renderEach`  | `each`/`empty`  | 컬렉션 도메인                 |
+| `renderCond`  | `.when()` 체인  | 그대로(non-exhaustive라 열림) |
+
+`some`/`none`이 `then`/`otherwise`보다 정확하다 — 이 함수가 실제로 판별하는 건
+**유무(presence/absence)**이고 `NonNullable` 좁히기가 정확히 그 의미다.
+
+### 14.3 두 arm 모두 **필수**
+
+optional은 정확히 두 경우뿐이므로 하나를 빠뜨리면 컴파일 에러다. 이전의
+"`otherwise` 생략 시 `R | null`"은 제거했다 — 없음을 렌더 안 하려면
+`none: () => null`이라고 **명시**한다. `renderEach`의 `empty`도 같다.
+
+근거: 이 라이브러리의 존재 이유가 §1의 "조용히 통과하는 분기 제거"인데,
+생략 가능한 갈래는 그 기조와 어긋난다. `renderShow`/`renderEach`가 exhaustive
+진영(`renderMatch`)에 서고, `renderCond`만 non-exhaustive로 남아 대비가 선명해진다.
+
+### 14.4 "빌리되 담지 않는다"의 재확인
+
+`Some`/`None`은 **arm 키일 뿐**이다. Option 타입도, `Some(x)`/`None` 생성자도,
+`.map`/`.andThen`도 들여오지 않는다 — neverthrow에서 `.match`의 *형태*만 빌린
+것과 정확히 같은 선택(§4). 부수 효과로 **export 표면이 늘지 않는다**: 객체 키라서
+새 export도 이름 충돌(§13)도 없다.
+
+### 14.5 검증
+
+프로토타입을 먼저 타입 레벨로 실측한 뒤 구현했다: `some`이 `NonNullable`로 좁혀짐,
+두 arm이 독립적으로 union(`number | string`), 갈래 누락이 컴파일 에러, 미지의 arm 키
+거부 — 4개 모두 확인 후 `*.test-d.ts`에 회귀 케이스로 고정.

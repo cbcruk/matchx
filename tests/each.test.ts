@@ -2,25 +2,30 @@ import { expect, test } from 'vite-plus/test'
 import { renderEach } from '../src/each.ts'
 
 test('renderEach maps every item, passing the index', () => {
-  expect(renderEach([10, 20, 30], (n, i) => n + i)).toEqual([10, 21, 32])
+  const out = renderEach([10, 20, 30]).arms({
+    each: (n, i) => n + i,
+    empty: () => 'empty',
+  })
+
+  expect(out).toEqual([10, 21, 32])
 })
 
-test('renderEach renders the fallback when empty', () => {
-  expect(
-    renderEach(
-      [],
-      (n) => n,
-      () => 'empty',
-    ),
-  ).toBe('empty')
-})
+test('renderEach takes the empty arm for an empty collection', () => {
+  const out = renderEach([]).arms({
+    each: (n) => n,
+    empty: () => 'empty',
+  })
 
-test('renderEach returns null when empty and no fallback given', () => {
-  expect(renderEach([], (n) => n)).toBeNull()
+  expect(out).toBe('empty')
 })
 
 test('renderEach consumes a Set', () => {
-  expect(renderEach(new Set([1, 2, 2, 3]), (n) => n * 2)).toEqual([2, 4, 6])
+  const out = renderEach(new Set([1, 2, 2, 3])).arms({
+    each: (n) => n * 2,
+    empty: () => null,
+  })
+
+  expect(out).toEqual([2, 4, 6])
 })
 
 test('renderEach consumes a Map as [key, value] entries', () => {
@@ -29,7 +34,12 @@ test('renderEach consumes a Map as [key, value] entries', () => {
     ['b', 2],
   ])
 
-  expect(renderEach(byId, ([k, v]) => `${k}=${v}`)).toEqual(['a=1', 'b=2'])
+  const out = renderEach(byId).arms({
+    each: ([k, v]) => `${k}=${v}`,
+    empty: () => null,
+  })
+
+  expect(out).toEqual(['a=1', 'b=2'])
 })
 
 test('renderEach consumes a generator', () => {
@@ -38,17 +48,32 @@ test('renderEach consumes a generator', () => {
     yield 'y'
   }
 
-  expect(renderEach(gen(), (s) => s.toUpperCase())).toEqual(['X', 'Y'])
+  const out = renderEach(gen()).arms({
+    each: (s) => s.toUpperCase(),
+    empty: () => null,
+  })
+
+  expect(out).toEqual(['X', 'Y'])
 })
 
-test('renderEach consumes a generator that yields nothing via the fallback', () => {
+test('renderEach takes the empty arm for a generator that yields nothing', () => {
   function* empty(): Generator<number> {}
 
-  expect(
-    renderEach(
-      empty(),
-      (n) => n,
-      () => 'none',
-    ),
-  ).toBe('none')
+  const out = renderEach(empty()).arms({
+    each: (n) => n,
+    empty: () => 'none',
+  })
+
+  expect(out).toBe('none')
+})
+
+test('renderEach does not run the empty arm when there are items', () => {
+  const calls: string[] = []
+
+  renderEach([1]).arms({
+    each: () => calls.push('each'),
+    empty: () => calls.push('empty'),
+  })
+
+  expect(calls).toEqual(['each'])
 })

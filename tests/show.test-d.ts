@@ -1,47 +1,51 @@
 import { renderShow } from '../src/show.ts'
 
 /* -------------------------------------------------------------------------- */
-/*  Type-level tests for `show`. The `@ts-expect-error` negatives are the       */
-/*  regression surface.                                                        */
+/*  Type-level tests for `renderShow`. The `@ts-expect-error` negatives are     */
+/*  the regression surface.                                                    */
 /* -------------------------------------------------------------------------- */
 
 declare const user: { name: string } | null | undefined
-
-/* --- positive: `then` receives the value with null/undefined removed ------- */
-
-export const narrowed = renderShow(
-  user,
-  (u) => u.name,
-  () => 'guest',
-)
-
-/* --- positive: with an otherwise, the result is non-nullable --------------- */
-
-export const withFallback: string = renderShow(
-  user,
-  (u) => u.name,
-  () => 'guest',
-)
-
-/* --- positive: the two branches may return different types ----------------- */
-
 declare const count: number | null
 
-export const mixed: number | string = renderShow(
-  count,
-  (n) => n * 2,
-  () => 'none',
-)
+/* --- positive: `some` receives the value with null/undefined removed ------- */
 
-/* --- negative: without otherwise the result may be null -------------------- */
+export const narrowed: string = renderShow(user).arms({
+  some: (u) => u.name,
+  none: () => 'guest',
+})
 
-// @ts-expect-error result is `string | null` when otherwise is omitted
-export const mustHandleNull: string = renderShow(user, (u) => u.name)
+/* --- positive: the two arms may return different types --------------------- */
 
-/* --- negative: inside `then` the value has null/undefined removed ----------- */
+export const mixed: number | string = renderShow(count).arms({
+  some: (n) => n * 2,
+  none: () => 'none',
+})
 
-export const argIsNonNull = renderShow(user, (u) => {
-  // @ts-expect-error 'u' is narrowed, so it is not assignable to a nullable-only target
-  const nn: null | undefined = u
-  return nn
+/* --- negative: inside `some` the value has null/undefined removed ----------- */
+
+export const argIsNonNull = renderShow(user).arms({
+  some: (u) => {
+    // @ts-expect-error 'u' is narrowed, so it is not assignable to a nullable-only target
+    const nn: null | undefined = u
+    return nn
+  },
+  none: () => null,
+})
+
+/* --- negative: both arms are required — no silent fall-through ------------- */
+
+// @ts-expect-error 'none' is missing, so the optional is not covered
+export const missingNone = renderShow(user).arms({ some: (u) => u.name })
+
+// @ts-expect-error 'some' is missing, so the optional is not covered
+export const missingSome = renderShow(user).arms({ none: () => 'guest' })
+
+/* --- negative: an unknown arm key is rejected ------------------------------ */
+
+export const extraArm = renderShow(user).arms({
+  some: (u) => u.name,
+  none: () => 'guest',
+  // @ts-expect-error 'otherwise' is not an arm of an optional
+  otherwise: () => 'x',
 })
