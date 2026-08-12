@@ -1,3 +1,4 @@
+import { describe, isPlainObject } from './internal.ts'
 import type { Narrow, Pattern } from './types.ts'
 
 /* -------------------------------------------------------------------------- */
@@ -15,11 +16,23 @@ function matches(value: unknown, pattern: unknown): boolean {
   if (typeof pattern !== 'object' || pattern === null) return false
   if (typeof value !== 'object' || value === null) return false
 
+  // Dates compare by instant. Identity would make every date pattern miss.
+  if (pattern instanceof Date) {
+    return value instanceof Date && pattern.getTime() === value.getTime()
+  }
+
+  // Exact length: `[]` has to mean "the empty array", not "any array". Prefix
+  // matching would make the natural empty-list guard fire for every list.
   if (Array.isArray(pattern)) {
-    if (!Array.isArray(value) || value.length < pattern.length) return false
+    if (!Array.isArray(value) || value.length !== pattern.length) return false
     return pattern.every((p, i) => matches(value[i], p))
   }
-  return Object.entries(pattern as Record<string, unknown>).every(([k, p]) =>
+
+  // Only `{}`-style objects match structurally — see isPlainObject. Anything
+  // else (Map/Set/RegExp/class instance) has already had its shot at Object.is.
+  if (!isPlainObject(pattern)) return false
+
+  return Object.entries(pattern).every(([k, p]) =>
     matches((value as Record<string, unknown>)[k], p),
   )
 }
@@ -120,11 +133,16 @@ export function cond<T>(value: T): Cond<T> {
 
   const api = {
     when(...args: unknown[]) {
+      // Tracked separately from `pattern`: `undefined` is a legitimate pattern
+      // (whenever `T` includes it), so it cannot double as the "no pattern"
+      // sentinel — that would make such an arm match every value.
+      let hasPattern = false
       let pattern: unknown
       let guard: ((v: T) => boolean) | undefined
       let render: (v: T) => unknown
 
       if (args.length >= 3) {
+        hasPattern = true
         pattern = args[0]
         guard = args[1] as (v: T) => boolean
         render = args[2] as (v: T) => unknown
@@ -134,12 +152,13 @@ export function cond<T>(value: T): Cond<T> {
         if (typeof matcher === 'function') {
           guard = matcher as (v: T) => boolean
         } else {
+          hasPattern = true
           pattern = matcher
         }
       }
 
       if (!matched) {
-        const patternOk = pattern === undefined || patternMatches(value, pattern)
+        const patternOk = !hasPattern || patternMatches(value, pattern)
         const guardOk = guard ? guard(value) : true
         if (patternOk && guardOk) {
           matched = true
@@ -156,7 +175,7 @@ export function cond<T>(value: T): Cond<T> {
     },
     exhaustive() {
       if (!matched) {
-        throw new Error(`[matchx] non-exhaustive cond for value: ${JSON.stringify(value)}`)
+        throw new Error(`[matchx] non-exhaustive cond for value: ${describe(value)}`)
       }
       return result as never
     },

@@ -22,17 +22,17 @@ import type { ReactNode } from 'react'
  * //             u: NonNullable — null | undefined removed
  * ```
  */
-export function show<T, R = ReactNode>(
+export function show<T, R1 = ReactNode, R2 = R1>(
   when: T,
-  then: (value: NonNullable<T>) => R,
-  otherwise: () => R,
-): R
-export function show<T, R = ReactNode>(when: T, then: (value: NonNullable<T>) => R): R | null
-export function show<T, R>(
+  then: (value: NonNullable<T>) => R1,
+  otherwise: () => R2,
+): R1 | R2
+export function show<T, R1 = ReactNode>(when: T, then: (value: NonNullable<T>) => R1): R1 | null
+export function show<T, R1, R2>(
   when: T,
-  then: (value: NonNullable<T>) => R,
-  otherwise?: () => R,
-): R | null {
+  then: (value: NonNullable<T>) => R1,
+  otherwise?: () => R2,
+): R1 | R2 | null {
   if (when) return then(when as NonNullable<T>)
   return otherwise ? otherwise() : null
 }

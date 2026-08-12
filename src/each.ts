@@ -24,12 +24,21 @@ import type { ReactNode } from 'react'
  * {each(byId, ([id, u]) => <Row key={id} user={u} />)} // byId: Map<Id, User>
  * ```
  */
-export function each<T>(
+export function each<T, R = ReactNode, F = R>(
   items: Iterable<T>,
-  render: (item: T, index: number) => ReactNode,
-  fallback?: () => ReactNode,
-): ReactNode {
-  const out: ReactNode[] = []
+  render: (item: T, index: number) => R,
+  fallback: () => F,
+): R[] | F
+export function each<T, R = ReactNode>(
+  items: Iterable<T>,
+  render: (item: T, index: number) => R,
+): R[] | null
+export function each<T, R, F>(
+  items: Iterable<T>,
+  render: (item: T, index: number) => R,
+  fallback?: () => F,
+): R[] | F | null {
+  const out: R[] = []
   let index = 0
   for (const item of items) {
     out.push(render(item, index))
