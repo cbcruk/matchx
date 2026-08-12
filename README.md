@@ -98,50 +98,62 @@ purpose, so it demands an explicit `fallback` (cf. neverthrow's `unwrapOr`):
 }
 ```
 
-### `renderShow(when, then, otherwise?)` — truthy-narrowing conditional
+### `renderShow(when).arms({ some, none })` — presence/absence
 
-The two-branch case, borrowed from Solid's `<Show>` but as a plain expression.
-When `when` is truthy, `then` receives it with `null | undefined` removed
-(`NonNullable`), so the common `T | null` guard narrows for free:
+The two-case branch. Solid's `<Show>` supplied the idea; the **arm vocabulary is
+borrowed from Option** — `some` / `none` — because presence is exactly what it
+branches on. `some` receives the value with `null | undefined` removed
+(`NonNullable`), so the everyday `T | null` guard narrows for free:
 
 ```tsx
 {
-  renderShow(
-    user,
-    (u) => <Profile user={u} />,
-    () => <Guest />,
-  )
-  //         u: NonNullable<typeof user> — no null/undefined
+  renderShow(user).arms({
+    some: (u) => <Profile user={u} />, // u: NonNullable — no null/undefined
+    none: () => <Guest />,
+  })
 }
 ```
 
-- With `otherwise`, the result is `R`; without it, `R | null`.
-- `false` / `0` / `''` route to `otherwise` at runtime, but only `null` and
+- **Both arms are required.** An optional has exactly two cases, so there is no
+  silent fall-through — omit one and it's a compile error. Write
+  `none: () => null` when absence should render nothing.
+- The arms may return different types; the result is their union.
+- `false` / `0` / `''` take the `none` arm at runtime, but only `null` and
   `undefined` are removed from the value's type.
 
-### `renderEach(items, render, fallback?)` — iterable list
+No Option type comes with the vocabulary — there are no `Some`/`None`
+constructors, no `.map`, no `.andThen`. Borrowed, not bundled.
 
-Solid's `<For>` as a plain expression. Over a bare `.map` it adds two things:
-it takes **any `Iterable`** (Map, Set, a generator — no spreading), and it folds
-in the empty-state `fallback`. It does **not** manage keys — `render` must return
-keyed elements, exactly as `.map` requires:
+### `renderEach(items).arms({ each, empty })` — iterable list
+
+Solid's `<For>` as a plain expression. Over a bare `.map` it adds two things: it
+takes **any `Iterable`** (Map, Set, a generator — no spreading), and it makes the
+empty case an **explicit arm** rather than something you remember to add. It does
+**not** manage keys — `each` must return keyed elements, exactly as `.map` does:
 
 ```tsx
 {
-  renderEach(
-    users,
-    (u) => <Row key={u.id} user={u} />,
-    () => <Empty />,
-  )
+  renderEach(users).arms({
+    each: (u) => <Row key={u.id} user={u} />,
+    empty: () => <Empty />,
+  })
 }
 
 {
-  renderEach(byId, ([id, u]) => <Row key={id} user={u} />) // byId: Map<Id, User>
+  // byId: Map<Id, User>
+  renderEach(byId).arms({
+    each: ([id, u]) => <Row key={id} user={u} />,
+    empty: () => null,
+  })
 }
 ```
 
-Empty and no `fallback` → `null`. The render's return type flows through, so
-`renderEach` doubles as a typed map (`renderEach([1, 2], (n) => n * 2)` → `number[] | null`).
+Both arms are required, mirroring `renderShow`. The `each` return type flows
+through, so it doubles as a typed map:
+
+```ts
+renderEach([1, 2]).arms({ each: (n) => n * 2, empty: () => null }) // => number[] | null
+```
 
 Because `renderEach` takes any `Iterable`, it's the **render terminal for native
 [Iterator Helpers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator)** —
@@ -157,9 +169,10 @@ Iterator Helpers, e.g. Node 22+. `renderEach` itself only requires `Iterable`.)
       .values()
       .filter((u) => u.active)
       .take(10),
-    (u) => <Row key={u.id} user={u} />,
-    () => <Empty />,
-  )
+  ).arms({
+    each: (u) => <Row key={u.id} user={u} />,
+    empty: () => <Empty />,
+  })
 }
 ```
 
