@@ -272,14 +272,21 @@ The core has **zero runtime dependencies**; `react` is only a peer.
 ## Development
 
 ```bash
-vp install   # install dependencies
-vp test      # runtime tests (tests/*.test.*)
-vp check     # format, lint, type-check (this is where the type tests run)
-vp pack      # build (ESM + .d.ts)
+vp install            # install dependencies
+vp test               # runtime tests (tests/*.test.*)
+vp check              # format, lint, type-check (this is where the type tests run)
+pnpm run check:docs   # compile the examples in this file and in the JSDoc
+vp pack               # build (ESM + .d.ts)
 ```
 
 `tests/*.test-d.ts` hold the type-level tests — the negative `@ts-expect-error`
 cases are the real regression line, since here the **types are the feature**.
+
+Every example above is compiled against the real API in CI, so the docs cannot
+drift away from it. They all branch on one `State` union and share a set of
+placeholder components; both are declared in `scripts/check-docs.mjs`, which is
+also where you go if a new example needs a name that does not exist yet. Mark a
+fence `skip-check` to exempt it.
 
 ## Design log
 
