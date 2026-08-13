@@ -1,9 +1,5 @@
 import type { ReactNode } from 'react'
 
-/* -------------------------------------------------------------------------- */
-/*  Core (`renderMatch`) types                                                 */
-/* -------------------------------------------------------------------------- */
-
 /** The literal value behind a discriminant key `D` of union member `T`. */
 export type Discriminant<T, D extends keyof T> = T[D] & PropertyKey
 
@@ -25,10 +21,6 @@ export interface Matchable<T extends Record<D, PropertyKey>, D extends keyof T> 
    */
   partial<R = ReactNode>(arms: Partial<Arms<T, D, R>>, fallback: (value: T) => R): R
 }
-
-/* -------------------------------------------------------------------------- */
-/*  Guard-chain (`renderCond`) types                                           */
-/* -------------------------------------------------------------------------- */
 
 /** A deep-partial shape used to match against a value of type `T`. */
 export type Pattern<T> =

@@ -1,20 +1,6 @@
 import type { ReactNode } from 'react'
 
-/* -------------------------------------------------------------------------- */
-/*  Presence/absence branching — the two-case member of the family.            */
-/*                                                                            */
-/*  Solid's `<Show when={x}>` supplied the idea; the ARM VOCABULARY is         */
-/*  borrowed from Option — `some` / `none` — because that is precisely what    */
-/*  this branches on. Nothing of Option's machinery comes with it: there is no */
-/*  Option type, no constructors, no `.map`/`.andThen`. Borrowed, not bundled. */
-/*                                                                            */
-/*  `some` receives the value with `null | undefined` removed (`NonNullable`), */
-/*  so the everyday `T | null` guard narrows for free. `false`/`0`/`''` still  */
-/*  route to `none` at runtime, but only null/undefined leave the type — see   */
-/*  DESIGN §8.4 #2 for why the stricter version broke inference.               */
-/* -------------------------------------------------------------------------- */
-
-/** A value wrapped by `renderShow`, awaiting its `some`/`none` arms. */
+/** A value wrapped by {@link renderShow}, awaiting its `some`/`none` arms. */
 export interface Showable<T> {
   /**
    * Both arms are required: an optional has exactly two cases, so there is no
@@ -27,7 +13,13 @@ export interface Showable<T> {
 }
 
 /**
- * Branch on whether `when` is present.
+ * Branch on whether `when` is present. The arm vocabulary is borrowed from
+ * Option — `some`/`none` — because presence is exactly what this branches on;
+ * no Option type, constructors, or combinators come with it.
+ *
+ * `some` receives the value with `null | undefined` removed (`NonNullable`), so
+ * the everyday `T | null` guard narrows for free. `false`, `0` and `''` take the
+ * `none` arm at runtime, but only `null` and `undefined` leave the type.
  *
  * @example
  * ```tsx
