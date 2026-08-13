@@ -1,23 +1,13 @@
 import { describe } from './internal.ts'
 import type { Discriminant, Matchable } from './types.ts'
 
-/* -------------------------------------------------------------------------- */
-/*  Borrowed from neverthrow's `.match` — the SHAPE, not the implementation.  */
-/*                                                                            */
-/*  Kept:                                                                     */
-/*    • value wrapped → terminal `.arms` consumes it (fluent, no JSX element) */
-/*    • closed arm object → every discriminant required → exhaustive          */
-/*    • all arms share one return type (neverthrow: "both fns must return     */
-/*      the same type") → here every arm returns ReactNode                    */
-/*  Dropped:                                                                  */
-/*    • ok/err naming + "error handling" semantics                           */
-/*    • the 2-arm restriction (generalized to N-arm discriminated unions)    */
-/*    • any runtime dependency on neverthrow                                 */
-/* -------------------------------------------------------------------------- */
-
 /**
  * Wrap a discriminated-union value so it can be consumed by an exhaustive
- * terminal `.match` in a JSX expression slot — no IIFE, no missed branches.
+ * terminal `.arms` in a JSX expression slot — no IIFE, no missed branches.
+ *
+ * Every discriminant value needs an arm: omit one and it is a compile error.
+ * Each arm receives the value narrowed to its own member, and all arms share a
+ * single return type.
  *
  * @param value the union value to match on
  * @param on    the discriminant key (e.g. `'status'`)

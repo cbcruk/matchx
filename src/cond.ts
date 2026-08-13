@@ -1,16 +1,6 @@
 import { describe, isPlainObject } from './internal.ts'
 import type { Narrow, Pattern } from './types.ts'
 
-/* -------------------------------------------------------------------------- */
-/*  Function-form guard chain — the flexible, NON-exhaustive counterpart.      */
-/*                                                                            */
-/*  `renderMatch` is closed and exhaustive over a single discriminant.         */
-/*  `renderCond` trades that away for guards and deep patterns: use it when a  */
-/*  branch depends on more than one discriminant. Like the rest of the family  */
-/*  it is a plain expression — it drops into a `{}` slot with no wrapper       */
-/*  element. First matching arm wins; only its `render` runs.                  */
-/* -------------------------------------------------------------------------- */
-
 function matches(value: unknown, pattern: unknown): boolean {
   if (Object.is(value, pattern)) return true
   if (typeof pattern !== 'object' || pattern === null) return false
@@ -37,11 +27,8 @@ function matches(value: unknown, pattern: unknown): boolean {
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Or-patterns — Rust's `P1 | P2`. A branded box so `.when` can tell an        */
-/*  alternatives list apart from a single array-shaped pattern.                */
-/* -------------------------------------------------------------------------- */
-
+/** Brands an {@link AnyOf} box so `.when` can tell a list of alternatives apart
+ * from a single array-shaped pattern. */
 const ANY_OF = Symbol('matchx.anyOf')
 
 /** A set of alternative patterns; the value matches if any one of them does. */
@@ -116,7 +103,11 @@ export interface Cond<T, R = never> {
 }
 
 /**
- * Open a guard chain over `value`.
+ * Open a guard chain over `value` — the flexible, **non-exhaustive** counterpart
+ * to {@link renderMatch}. Reach for it when a branch depends on more than one
+ * discriminant, or needs a runtime guard or a deep pattern.
+ *
+ * The first matching arm wins, and only its `render` runs.
  *
  * @example
  * ```tsx

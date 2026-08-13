@@ -1,19 +1,11 @@
-/* -------------------------------------------------------------------------- */
-/*  The IIFE. Yes, that one.                                                    */
-/*                                                                            */
-/*  matchx exists to kill the inline `(() => { … })()` in a JSX slot (see the  */
-/*  README's "The problem"). So shipping it back — named — is the easter egg.  */
-/*  It earns NO type story: no exhaustiveness, no narrowing. It's literally     */
-/*  `body()`. But `iife(() => { … })` reads better than `(() => { … })()`, and  */
-/*  names the escape hatch for the rare slot where you genuinely want           */
-/*  procedural code and none of the guarantees.                                 */
-/*                                                                            */
-/*  If your branches are a union, you wanted renderMatch/renderCond. You know. */
-/* -------------------------------------------------------------------------- */
-
 /**
  * Immediately invoke `body` and return its result — the honest, named form of
  * the very IIFE matchx was built to replace.
+ *
+ * It offers no exhaustiveness and no narrowing; it is literally `body()`. Reach
+ * for it only in the rare slot that genuinely wants procedural code and none of
+ * the guarantees. If the branches are a union, you wanted {@link renderMatch} or
+ * {@link renderCond}.
  *
  * @example
  * ```tsx
