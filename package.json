@@ -1,6 +1,6 @@
 {
   "name": "matchx",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Compile-time exhaustive, IIFE-free conditional rendering for JSX. Interface borrowed from neverthrow's .match, not bundled.",
   "keywords": [
     "conditional-rendering",
