@@ -5,16 +5,25 @@
 
 ## The problem
 
+Every example below branches on this union:
+
+```ts
+type State =
+  | { status: 'loading' }
+  | { status: 'error'; message: string; code: number }
+  | { status: 'success'; data: number[] }
+```
+
 JSX `{}` only takes an **expression**. So branching logic ends up in an IIFE:
 
 ```tsx
-{
-  ;(() => {
+<div>
+  {(() => {
     if (s.status === 'loading') return <Spinner />
     if (s.status === 'error') return <Error msg={s.message} />
     return <Content data={s.data} />
-  })()
-}
+  })()}
+</div>
 ```
 
 Add a new member to the union and this branch **silently passes** — there is no
@@ -224,8 +233,8 @@ becomes a match-all:
 ```tsx
 {
   renderCond(state)
-    .when(anyOf({ status: 'error' }, { status: 'timeout' }), (s) => <ErrorView s={s} />)
-    //     s: the 'error' | 'timeout' members — one arm, no duplicated render
+    .when(anyOf({ status: 'loading' }, { status: 'error' }), (s) => <Busy state={s} />)
+    //     s: the 'loading' | 'error' members — one arm, no duplicated render
     .otherwise((s) => <Content state={s} />)
 }
 ```

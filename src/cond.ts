@@ -43,9 +43,9 @@ export interface AnyOf<P> {
  * @example
  * ```tsx
  * renderCond(state)
- *   .when(anyOf({ status: 'error' }, { status: 'timeout' }), (s) => <ErrorView s={s} />)
+ *   .when(anyOf({ status: 'loading' }, { status: 'error' }), (s) => <Busy state={s} />)
  *   .otherwise((s) => <Content state={s} />)
- * //  s: the 'error' | 'timeout' members
+ * //  s: the 'loading' | 'error' members
  * ```
  */
 export function anyOf<const P>(...patterns: readonly P[]): AnyOf<P> {
