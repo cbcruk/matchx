@@ -261,11 +261,11 @@ If your branches are a union, you wanted `renderMatch` / `renderCond`. You know 
 
 From neverthrow's `.match` we kept the **shape**, not the code:
 
-| Kept                                                                          | Dropped                                        |
-| ----------------------------------------------------------------------------- | ---------------------------------------------- |
-| value wrapped → terminal `.match` consumes it (an expression, no JSX element) | `ok`/`err` naming and error-handling semantics |
-| closed arm object → exhaustiveness for free                                   | the 2-arm restriction (generalized to N arms)  |
-| all arms share one return type                                                | every runtime dependency                       |
+| Kept                                                                         | Dropped                                        |
+| ---------------------------------------------------------------------------- | ---------------------------------------------- |
+| value wrapped → terminal `.arms` consumes it (an expression, no JSX element) | `ok`/`err` naming and error-handling semantics |
+| closed arm object → exhaustiveness for free                                  | the 2-arm restriction (generalized to N arms)  |
+| all arms share one return type                                               | every runtime dependency                       |
 
 The core has **zero runtime dependencies**; `react` is only a peer.
 
@@ -280,3 +280,10 @@ vp pack      # build (ESM + .d.ts)
 
 `tests/*.test-d.ts` hold the type-level tests — the negative `@ts-expect-error`
 cases are the real regression line, since here the **types are the feature**.
+
+## Design log
+
+[`src/DESIGN.md`](src/DESIGN.md) records how this API arrived at its current
+shape — including the alternatives that were rejected and the decisions that were
+later reversed, with the reasoning kept intact. It is a decision record, not an
+API reference; this README is the reference.
