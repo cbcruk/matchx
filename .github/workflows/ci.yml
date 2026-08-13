@@ -30,6 +30,11 @@ jobs:
       - name: Test
         run: pnpm run test
 
+      # Compiles every README block and JSDoc @example against the real API, so
+      # the documentation cannot drift away from it silently.
+      - name: Check docs
+        run: pnpm run check:docs
+
       # The published artifact (ESM + .d.ts) must build.
       - name: Build
         run: pnpm run build
